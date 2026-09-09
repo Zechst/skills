@@ -12,16 +12,25 @@ Renderer choice: match the host project. Greenfield with no framework, choose Re
 
 Import types from the framework package the scaffold generated (`@storybook/react-vite`, `@storybook/nextjs`, `@storybook/vue3-vite`, …), not from a guessed package name.
 
+## After scaffolding
+
+Two things the generator leaves behind, both verified against a real `npm create storybook@latest` run:
+
+- **Delete `src/stories/`.** The scaffold ships a demo Button/Header/Page design system. It clutters the sidebar with components you are not cloning, and its files fail a strict `tsc --noEmit` with `TS6133`, so an agent inherits a red typecheck it did not cause.
+- **Do not re-add the default addons.** Current scaffolds already install `@storybook/addon-a11y`, `@storybook/addon-vitest`, `@storybook/addon-docs`, `@chromatic-com/storybook` and `@storybook/addon-mcp`. Read `main.ts` and add only what is genuinely missing.
+
 ## `.storybook/main.ts`
+
+Edit the generated file rather than replacing it — the generator writes `framework` as a bare string, which is valid, and rewriting it to the object form gains nothing. The one change usually needed is `staticDirs`:
 
 ```ts
 import type { StorybookConfig } from '@storybook/react-vite';
 
 const config: StorybookConfig = {
-  stories: ['../src/components/**/*.stories.@(ts|tsx)', '../src/tokens/**/*.mdx'],
-  addons: ['@storybook/addon-a11y', '@storybook/addon-vitest'],
+  stories: ['../src/**/*.mdx', '../src/**/*.stories.@(js|jsx|mjs|ts|tsx)'],
+  addons: ['@chromatic-com/storybook', '@storybook/addon-vitest', '@storybook/addon-a11y', '@storybook/addon-docs'],
   staticDirs: ['../public'],
-  framework: { name: '@storybook/react-vite', options: {} },
+  framework: '@storybook/react-vite',
 };
 
 export default config;
@@ -29,11 +38,13 @@ export default config;
 
 `staticDirs` is what makes downloaded assets resolvable. With `['../public']`, a file at `public/<site-key>/images/hero.webp` is referenced from a story as `/<site-key>/images/hero.webp`. Verify one asset renders before building anything that depends on many.
 
-## `.storybook/preview.ts`
+## `.storybook/preview.tsx`
 
-Three jobs: load the extracted fonts, load the token custom properties, and register the capture viewports.
+The generator writes `preview.tsx`, not `preview.ts` — edit the file that exists rather than creating a second one beside it.
 
-```ts
+Three jobs: load the extracted fonts, load the token custom properties, and register the capture viewports. Add a background matching the site's page colour, or every dark-site story renders on white.
+
+```tsx
 import type { Preview } from '@storybook/react-vite';
 import './fonts.css';
 import '../src/tokens/<site-key>.css';
@@ -47,8 +58,12 @@ const preview: Preview = {
         mobile:  { name: 'Mobile',  styles: { width: '390px',  height: '844px' } },
       },
     },
+    backgrounds: { options: { site: { name: 'Site', value: 'rgb(8, 9, 10)' } } },
   },
-  initialGlobals: { viewport: { value: 'desktop', isRotated: false } },
+  initialGlobals: {
+    viewport: { value: 'desktop', isRotated: false },
+    backgrounds: { value: 'site' },
+  },
 };
 
 export default preview;

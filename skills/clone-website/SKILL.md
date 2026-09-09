@@ -72,7 +72,9 @@ These are the differences between a clone and a "close enough" mess.
 
 2. **Identify the interaction model before building.** Scroll through a section slowly *before* clicking anything. If content changes on its own as you scroll, it is scroll-driven — find the mechanism (`IntersectionObserver`, `scroll-snap`, `position: sticky`, `animation-timeline`, scroll listener). Only if nothing moves on scroll do you click and hover to test. Building click-based tabs when the original is scroll-driven is the most expensive error available to you: it is a rewrite, not a CSS fix. Record the verdict in the spec as `INTERACTION MODEL: <static | click | scroll | hover | time>`.
 
-3. **Every state, not just the default.** Click every tab and extract each one's content. Capture computed styles at scroll 0 *and* past the trigger, then diff them — the diff is the behaviour spec. Each state becomes a story export.
+3. **Every state, not just the default — and prove the trigger fired.** Click every tab and extract each one's content. Capture computed styles at scroll 0 *and* past the trigger, then diff them; the diff is the behaviour spec, and each state becomes a story export.
+
+   An empty diff is ambiguous. It means either the component is genuinely static *or* your trigger never engaged, and those demand opposite responses. Never read one as the other. Resolve it with a positive assertion that the trigger actually fired — `el.matches(':hover')` for hover, a changed `scrollY` for scroll, a changed `aria-selected` or panel for tabs — and diff `className` and attributes alongside computed styles, since many sites swap a class rather than an inline style. Only when the trigger provably fired *and* nothing changed do you record `static`.
 
 4. **Real content, real assets.** Pull actual text via `textContent`, download every image and video, inline every SVG as a component. A section that looks like one image is often layered — background gradient, foreground UI mockup, absolutely-positioned overlay icon. Enumerate *all* `<img>` and background images in a container's subtree; a missed overlay makes the clone look empty even when the background is right. Check for `<video>`, Lottie, or canvas before building an elaborate HTML mockup of what a video shows. Generate content only for genuinely per-session server data, or via the approved fallback in `references/generated-asset-fallback.md`.
 
@@ -107,9 +109,11 @@ Sequential, and you do it yourself — it touches shared files. Follow `referenc
 
 1. **Tokens.** Write `src/tokens/<site-key>.ts` — colours, type scale, spacing, radii, shadows, easings — from the extracted computed values. Expose them as CSS custom properties and add a Storybook docs page rendering swatches and the type scale. This page is a deliverable.
 2. **Fonts.** Load the real families. Register them in `.storybook/preview.ts` so every story renders in the right typeface.
-3. **Assets.** Enumerate with the discovery script in `references/extraction-scripts.md`, then download into `public/<site-key>/` with a uniquely-named script (`scripts/download-<site-key>-<page-key>.mjs`), batched 4 at a time with error handling. Never write a generic filename over another page's asset. Confirm `staticDirs` in `.storybook/main.ts` serves the directory.
+3. **Assets.** Scroll the full page first — lazy-loaded images report `naturalWidth: 0` and may not exist in the DOM until they enter the viewport, so enumerating before a scroll pass silently undercounts. Then enumerate with the discovery script in `references/extraction-scripts.md` and download into `public/<site-key>/` with a uniquely-named script (`scripts/download-<site-key>-<page-key>.mjs`), batched 4 at a time with error handling. Derive filenames per that script's rule, never from the URL's last path segment — CDN transform URLs end in `f=auto,fit=scale-down,width=2560`, so a naive basename collides every transformed image onto one file. Confirm `staticDirs` in `.storybook/main.ts` serves the directory.
 4. **Icons.** Extract inline SVGs as components under `atoms/icons/`, named by visual function (`SearchIcon`, `ArrowRightIcon`, `LogoIcon`). Deduplicate across the site.
 5. **Types.** Namespaced interfaces for the content structures observed.
+
+Delete the scaffold's own demo content (`src/stories/`) before writing anything. It ships stories that fail a strict typecheck and clutter the sidebar with a fake design system that is not the one you are extracting.
 
 Foundation is done when `npm run storybook` boots, the tokens docs page renders, and a smoke story displays a downloaded asset in the correct font.
 

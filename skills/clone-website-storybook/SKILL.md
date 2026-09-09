@@ -1,5 +1,5 @@
 ---
-name: clone-website
+name: clone-website-storybook
 description: Reverse-engineer one or more live websites into a Storybook component library organised by atomic design — extract computed CSS, assets, content and behaviour section by section, write a spec per component, then build atoms, molecules, organisms, templates and pages with one story per extracted state. Use when the user wants to clone, replicate, rebuild or copy a website, asks for a pixel-perfect clone, or wants a design system extracted from a live site.
 license: MIT
 ---

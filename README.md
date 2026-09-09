@@ -11,18 +11,18 @@ npx skills add douglasswm/skills
 Or a single skill, globally:
 
 ```bash
-npx skills add douglasswm/skills --skill clone-website --global
+npx skills add douglasswm/skills --skill clone-website-storybook --global
 ```
 
 Try one without installing:
 
 ```bash
-npx skills use douglasswm/skills@clone-website
+npx skills use douglasswm/skills@clone-website-storybook
 ```
 
 ## Skills
 
-### `clone-website`
+### `clone-website-storybook`
 
 Reverse-engineers a live website into a **Storybook** component library organised by **atomic design**.
 
@@ -31,7 +31,7 @@ It walks the page as a foreman: extracts computed CSS, assets, verbatim content 
 **Requires** a browser automation tool that can execute JavaScript in the page and take screenshots: Chrome DevTools MCP, Playwright, Puppeteer, or Browserbase.
 
 ```
-/clone-website https://example.com
+/clone-website-storybook https://example.com
 ```
 
 | | |

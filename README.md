@@ -1,23 +1,23 @@
-# agent-skills
+# skills
 
 Agent Skills for coding agents, in the portable [`SKILL.md`](https://skills.sh) format. Works with Claude Code, Cursor, Codex, Copilot, Windsurf, Cline, OpenCode and the other agents the `skills` CLI targets.
 
 ## Install
 
 ```bash
-npx skills add douglasswm/agent-skills
+npx skills add douglasswm/skills
 ```
 
 Or a single skill, globally:
 
 ```bash
-npx skills add douglasswm/agent-skills --skill clone-website --global
+npx skills add douglasswm/skills --skill clone-website --global
 ```
 
 Try one without installing:
 
 ```bash
-npx skills use douglasswm/agent-skills@clone-website
+npx skills use douglasswm/skills@clone-website
 ```
 
 ## Skills

@@ -91,6 +91,7 @@ These are the differences between a clone and a "close enough" mess.
 5. **The spec file is the contract.** Every component gets a spec written *before* any code. Builders receive the spec contents inline in their prompt — never "go read the spec file", never "see TOKENS.md for colours". A builder should need zero external reads. The file persists as the artifact you audit when something looks wrong.
 
 6. **Stay green.** Typecheck after every component; `npm run build-storybook` after every tier. A broken library is never acceptable, even temporarily.
+7. **Clone every animation and every interaction — no stills, no "good enough".** If the source moves, the clone moves, with the source's own timings, easings, sequencing and restart behaviour. If it responds to hover, focus, click, scroll or keyboard, the clone does too. A component that animates on the source and is a static picture in the clone is *unfinished*, not "a known gap". What moves is decided by a **motion inventory** you generate, not by what you happened to notice (see Phase 1 and `references/motion.md`). The only way an item leaves the inventory unbuilt is the user explicitly approving its omission, recorded in the file.
 
 ## Phase 0 — Source recon
 
@@ -117,13 +118,21 @@ Assign each target a readable `<site-key>` (origin slug) and `<page-key>` (pathn
 - *Hover:* every button, card, link, nav item, image — record the property change and the transition timing.
 - *Responsive:* 1440 / 768 / 390. Note which sections change layout and at roughly which breakpoint.
 
+**Motion inventory.** Motion hides in three places that computed styles never show: CSS keyframes and scroll timelines, JavaScript in framework islands and bundles (timers, GSAP/framer-motion timelines, springs, number and text effects, WebGL/canvas), and behaviour wired to events. Generate the checklist, then read the source of every scripted row:
+
+```bash
+python3 <skill-dir>/scripts/motion-inventory.py <url> --out docs/research/<site-key>/MOTION.md
+```
+
+It lists every `@keyframes` and where it is used, scroll/view timelines and `@property`, and every script the page loads with the motion it contains. Fetch and read each scripted component (`references/motion.md` says how): the numbers you need — durations, easings, stagger, intervals, spring stiffness, random ranges, which state follows which — are in the source. Add rows for anything you see moving that the tool cannot know. Every row starts `[ ]`.
+
 Write findings to `docs/research/<site-key>/BEHAVIORS.md`. This is your behaviour bible; every spec references it.
 
 **Topology.** Map every section top to bottom with a working name, its visual order, whether it is flow content or a fixed overlay, its z-index layer, and its interaction model. Assign each section a provisional tier. Write to `docs/research/<site-key>/TOPOLOGY.md`.
 
 **Geometry.** After a slow scroll pass, record every section's `[top, height]` and the page's total height at the reference viewport width (script in `references/layout-diff.md`) and put it in the topology table. This table is the acceptance test for Phase 5 — without it you can only judge the clone by eye, and layout drift of 100+ px is invisible by eye. Also note section ids that change between loads (numeric suffixes) so nothing selects by them.
 
-Phase 1 is done when `BEHAVIORS.md` and `TOPOLOGY.md` exist and every section in the topology carries a tier, an interaction model, and measured geometry.
+Phase 1 is done when `BEHAVIORS.md`, `TOPOLOGY.md` and `MOTION.md` exist, and every section in the topology carries a tier, an interaction model, and measured geometry.
 
 **If the browser tooling blocks, filters or freezes**, see `references/blocked-tooling.md` before falling back to estimates.
 
@@ -167,6 +176,8 @@ python3 <skill-dir>/scripts/audit-tiers.py src          # or the folder that con
 
 It fails on (1) a component importing the same or a higher tier, (2) a component without a colocated story, (3) a story title whose section does not match its folder, and (4) a missing `storySort`. Run it after every tier and again before the report — components added later (a flyout, a text effect, a shared constant) are exactly where drift creeps in. Fix by reclassifying or moving code, not by loosening the check.
 
+**Motion gate.** As you build each component, close its rows in `MOTION.md` with `[x] built <story or file>` — the story must actually show the motion (a play function that samples a computed style over time, or a story that runs it). Before Phase 5 run `python3 <skill-dir>/scripts/motion-inventory.py --check docs/research/<site-key>/MOTION.md`; it fails while any row is open or marked `[-] not cloned` without `APPROVED: <who>`. Never write "GAP: … is a still" in a spec or the report to close a row — build it, or ask the user.
+
 ## Phase 4 — Assembly
 
 Build the template, then the page.
@@ -185,8 +196,9 @@ Do not declare the clone complete at the end of Phase 4.
 2. Put the original and the page story side by side at 1440px, then at 390px. Compare section by section, top to bottom — at full scale, not a reduced screenshot.
 3. For each discrepancy: check the spec first. If the spec is wrong, re-extract, update the spec, then fix the component. If the spec is right and the build diverged, fix the build. Never patch a component without reconciling its spec — the spec is what the next run reads.
 4. Exercise every interaction: scroll the whole page, click every tab, hover every interactive element, and use the **keyboard** (arrow keys through tabs, Tab order, Escape on overlays). Confirm scroll feel, header transitions, tab switching and entrance animations.
-5. Run `scripts/audit-tiers.py` one last time and open the Storybook sidebar: it should read Foundations, Atoms, Molecules, Organisms, Templates, Pages, in that order, with no other sections.
-6. Run `npm run test-storybook` if the project has it configured. If the test browser is not installed, say so in the report instead of skipping silently.
+5. Watch the original and the clone run side by side for at least a minute per section and confirm every motion row: timings, loops, what triggers it, what it does on hover, focus and keyboard, and under reduced motion. Anything the inventory missed becomes a new row and gets built. Then run `motion-inventory.py --check` again.
+6. Run `scripts/audit-tiers.py` one last time and open the Storybook sidebar: it should read Foundations, Atoms, Molecules, Organisms, Templates, Pages, in that order, with no other sections.
+7. Run `npm run test-storybook` if the project has it configured. If the test browser is not installed, say so in the report instead of skipping silently.
 
 **Refactoring later?** Any swap of implementation (hand CSS → utility classes, hand-rolled widgets → a headless primitive, adding a reset) needs a *snapshot → change → diff* pass with every difference classified as invisible, intended, or a bug (`layout-diff.md` §2). Capture every state, and confirm each baseline is real before trusting it.
 
@@ -199,6 +211,7 @@ Before writing code for any component, verify every box. If you cannot, go back 
 - [ ] Tier is assigned and the component composes only lower tiers (`audit-tiers.py` passes; shared constants are in `data/`, not a sibling)
 - [ ] `INVENTORY.md` **and** the `atoms/` and `molecules/` folders searched by structure for an existing piece that covers this; `Composes` lists what is reused, and a new component states why nothing fit
 - [ ] Interaction model identified by scrolling *before* clicking
+- [ ] The component's rows in `MOTION.md` are read from the source (script and CSS), each with trigger, timings, easing, loop/restart and reduced-motion behaviour in the spec's Motion section
 - [ ] Every state's content and computed styles captured
 - [ ] Scroll-driven: trigger threshold, before/after styles, and transition recorded
 - [ ] Hover: before/after values and transition timing recorded
@@ -218,6 +231,8 @@ Lessons from failed clones, each of which cost hours. The non-negotiables above 
 - **Don't let an organism absorb its children.** Handing one agent "build the features section" produces approximated spacing and guessed font sizes. Handing it a single molecule with exact values produces an exact match.
 - **Don't treat a new target as permission to replace existing work.** Preserve other sites' namespaces, tokens, and stories. Ask before touching an existing one.
 - **Don't skip the story for a state you already built.** An unexported state is invisible to review and to the test runner, which is the same as not having extracted it.
+- **Don't ship a still where the source moves.** "Static stand-in", "the toasts are a still", "hover preview not built" are unfinished work, not documented gaps. Motion the user has not approved dropping gets built.
+- **Don't stop at CSS keyframes.** Most of what moves on a modern marketing site is driven by JavaScript: GSAP and framer-motion timelines, intervals, springs, number-roll and text-effect libraries, canvas/WebGL. `getComputedStyle` and the keyframes list show none of it. Read the component scripts.
 - **Don't add a `ui/` tier or a `UI/…` sidebar section.** Styled Button/Tabs/Select/Dialog are atoms. A parallel primitives layer is how a Storybook ends up with a fifth section, primitives without stories, and molecules that "compose" them from the wrong side.
 - **Don't add a component after the tiers are "done" without re-running the audit.** Later additions (menus, text effects, shared constants) are where molecules start importing molecules and a story quietly never gets written.
 - **Don't put page-specific styling in a global stylesheet.** Scope it to the site's token namespace or the template, or it will bleed into every other site's stories.

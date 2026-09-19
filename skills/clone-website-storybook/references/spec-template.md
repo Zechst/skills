@@ -47,6 +47,16 @@ State that the original derives at runtime becomes a prop here, so every state i
 
 Every value from `getComputedStyle()`. No estimates, no Tailwind class guesses.
 
+## Motion
+One row per thing that moves or responds, each tied to a `MOTION.md` row. Numbers come from the source (CSS, or the component script), never from watching.
+- **What:** <element and effect, e.g. "incident cards drift right and fade">
+- **Trigger:** <mount | scroll into view | hover | focus | click | key | interval | event from another component>
+- **Mechanism and source:** <CSS keyframes name | GSAP timeline | framer-motion variants | WAAPI | spring stiffness/damping | interval> — `<script file>`
+- **Timing:** <durations, delays, stagger, easing curve, random ranges, loop or restart rule>
+- **Coupling:** <what state it reads or emits, e.g. listens to `rotating-text:variant`>
+- **Reduced motion:** <what the source does, and what the clone does>
+- **Story proof:** <the story/play function that shows it>
+
 ## States
 
 One subsection per state. Each becomes a story export named after the state.

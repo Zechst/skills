@@ -54,11 +54,11 @@ Story titles mirror the tree: `<Site>/Atoms/Button`, `<Site>/Organisms/SiteHeade
 
 **Primitives are atoms.** Styled headless primitives — Button, Tabs, Select, Dialog, Popover, Tooltip — are atoms even when the library builds them from several parts (`TabsList`, `TabsTab`, …): from your side they are one indivisible primitive. Do **not** create a separate `ui/` layer or a `UI/…` story section because the shadcn CLI does; point its `ui` alias at the atoms folder (`components.json`: `"ui": "@/atoms"`) and classify whatever it adds. A wrapper that only forwards to another atom is a variant of that atom, not a new one.
 
-**Import direction.** A component imports only from strictly lower tiers, and never from a sibling in its own tier. Constants, types and content that two siblings both need (nav items, tab definitions, copy) live in a `data/` or `lib/` module, not in one of the components. If a molecule needs a molecule, either the inner one is really an atom (it composes nothing) or the outer one is really an organism — reclassify, don't work around it. Record any genuine exception, with the reason, in the library's `docs/STORYBOOK.md` and pass it to the audit with `--allow`.
+**Import direction.** A component imports only from strictly lower tiers, and never from a sibling in its own tier. Constants, types and content that two siblings both need (nav items, tab definitions, copy) live in a `data/` or `lib/` module, not in one of the components. If a molecule needs a molecule, either the inner one is really an atom (it composes nothing), or the outer one is really an organism, or — often best — the outer one takes the inner one as a **slot** (a `renderX` prop or `children`) that the organism above fills in. Reclassify or slot; don't work around it. Record any genuine exception, with the reason, in the library's `docs/STORYBOOK.md` and pass it to the audit with `--allow`.
 
 **Splitting rule.** A component that spans more than one tier must be split — an organism containing an unbuilt card is two units of work, not one. If a spec exceeds ~150 lines you have misclassified the tier; go down a level. This is mechanical. Do not override it with "but it's all related."
 
-**Reuse rule.** Before creating any atom or molecule, check `INVENTORY.md` for an existing one on this site. A nav link and a footer link that compute to the same styles are one atom with two stories, not two atoms. This is what makes the output a design system rather than a pile of sections. Record every new atom and molecule in `INVENTORY.md` as you create it.
+**Reuse rule.** Before creating *any* component, at any tier, search for an existing piece that already does the job and compose it: read `INVENTORY.md`, then look through the `atoms/` and `molecules/` folders (and `data/` for shared content) by **structure**, not just by name. An organism is assembled from existing molecules and atoms first; a new atom or molecule is created only when none fits, and the spec's `Composes` field must name the pieces it reuses. Two things that compute to the same structure are one component with variants, not two: a nav link and a footer link, a menu row on desktop and the same row in a mobile panel, a "See all" link in three flyouts. Record every new atom and molecule in `INVENTORY.md` as you create it, and say in the spec why no existing one fit. This is what makes the output a design system rather than a pile of sections.
 
 ## Requirements
 
@@ -197,7 +197,7 @@ Before writing code for any component, verify every box. If you cannot, go back 
 - [ ] Spec file exists with every section filled
 - [ ] Every CSS value came from `getComputedStyle()`, none estimated
 - [ ] Tier is assigned and the component composes only lower tiers (`audit-tiers.py` passes; shared constants are in `data/`, not a sibling)
-- [ ] `INVENTORY.md` checked for an existing atom or molecule that covers this
+- [ ] `INVENTORY.md` **and** the `atoms/` and `molecules/` folders searched by structure for an existing piece that covers this; `Composes` lists what is reused, and a new component states why nothing fit
 - [ ] Interaction model identified by scrolling *before* clicking
 - [ ] Every state's content and computed styles captured
 - [ ] Scroll-driven: trigger threshold, before/after styles, and transition recorded

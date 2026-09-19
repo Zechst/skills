@@ -50,7 +50,11 @@ docs/research/<site-key>/           # BEHAVIORS.md, TOPOLOGY.md, INVENTORY.md, s
 docs/design-references/<site-key>/  # screenshots
 ```
 
-Story titles mirror the tree: `<Site>/Atoms/Button`, `<Site>/Organisms/SiteHeader`, `<Site>/Pages/Home`.
+Story titles mirror the tree: `<Site>/Atoms/Button`, `<Site>/Organisms/SiteHeader`, `<Site>/Pages/Home`. The sidebar has exactly these sections — `Foundations` (tokens, theme) then `Atoms`, `Molecules`, `Organisms`, `Templates`, `Pages` — and nothing else. Storybook sorts alphabetically by default, which puts Pages before Templates, so set `storySort` (see `references/storybook-setup.md`).
+
+**Primitives are atoms.** Styled headless primitives — Button, Tabs, Select, Dialog, Popover, Tooltip — are atoms even when the library builds them from several parts (`TabsList`, `TabsTab`, …): from your side they are one indivisible primitive. Do **not** create a separate `ui/` layer or a `UI/…` story section because the shadcn CLI does; point its `ui` alias at the atoms folder (`components.json`: `"ui": "@/atoms"`) and classify whatever it adds. A wrapper that only forwards to another atom is a variant of that atom, not a new one.
+
+**Import direction.** A component imports only from strictly lower tiers, and never from a sibling in its own tier. Constants, types and content that two siblings both need (nav items, tab definitions, copy) live in a `data/` or `lib/` module, not in one of the components. If a molecule needs a molecule, either the inner one is really an atom (it composes nothing) or the outer one is really an organism — reclassify, don't work around it. Record any genuine exception, with the reason, in the library's `docs/STORYBOOK.md` and pass it to the audit with `--allow`.
 
 **Splitting rule.** A component that spans more than one tier must be split — an organism containing an unbuilt card is two units of work, not one. If a spec exceeds ~150 lines you have misclassified the tier; go down a level. This is mechanical. Do not override it with "but it's all related."
 
@@ -155,7 +159,13 @@ Within a tier, for each component:
 
 Run `npm run build-storybook` at the end of each tier before starting the next. Fix breakage immediately; never carry a red library into the next tier.
 
-A tier is done when every component in it is green, every spec state has a story, and `INVENTORY.md` lists every atom and molecule created.
+A tier is done when every component in it is green, every spec state has a story, `INVENTORY.md` lists every atom and molecule created, **and the tier audit passes**:
+
+```bash
+python3 <skill-dir>/scripts/audit-tiers.py src          # or the folder that contains your atoms/ molecules/ … dirs
+```
+
+It fails on (1) a component importing the same or a higher tier, (2) a component without a colocated story, (3) a story title whose section does not match its folder, and (4) a missing `storySort`. Run it after every tier and again before the report — components added later (a flyout, a text effect, a shared constant) are exactly where drift creeps in. Fix by reclassifying or moving code, not by loosening the check.
 
 ## Phase 4 — Assembly
 
@@ -175,7 +185,8 @@ Do not declare the clone complete at the end of Phase 4.
 2. Put the original and the page story side by side at 1440px, then at 390px. Compare section by section, top to bottom — at full scale, not a reduced screenshot.
 3. For each discrepancy: check the spec first. If the spec is wrong, re-extract, update the spec, then fix the component. If the spec is right and the build diverged, fix the build. Never patch a component without reconciling its spec — the spec is what the next run reads.
 4. Exercise every interaction: scroll the whole page, click every tab, hover every interactive element, and use the **keyboard** (arrow keys through tabs, Tab order, Escape on overlays). Confirm scroll feel, header transitions, tab switching and entrance animations.
-5. Run `npm run test-storybook` if the project has it configured. If the test browser is not installed, say so in the report instead of skipping silently.
+5. Run `scripts/audit-tiers.py` one last time and open the Storybook sidebar: it should read Foundations, Atoms, Molecules, Organisms, Templates, Pages, in that order, with no other sections.
+6. Run `npm run test-storybook` if the project has it configured. If the test browser is not installed, say so in the report instead of skipping silently.
 
 **Refactoring later?** Any swap of implementation (hand CSS → utility classes, hand-rolled widgets → a headless primitive, adding a reset) needs a *snapshot → change → diff* pass with every difference classified as invisible, intended, or a bug (`layout-diff.md` §2). Capture every state, and confirm each baseline is real before trusting it.
 
@@ -185,7 +196,7 @@ Before writing code for any component, verify every box. If you cannot, go back 
 
 - [ ] Spec file exists with every section filled
 - [ ] Every CSS value came from `getComputedStyle()`, none estimated
-- [ ] Tier is assigned and the component composes only lower tiers
+- [ ] Tier is assigned and the component composes only lower tiers (`audit-tiers.py` passes; shared constants are in `data/`, not a sibling)
 - [ ] `INVENTORY.md` checked for an existing atom or molecule that covers this
 - [ ] Interaction model identified by scrolling *before* clicking
 - [ ] Every state's content and computed styles captured
@@ -207,6 +218,8 @@ Lessons from failed clones, each of which cost hours. The non-negotiables above 
 - **Don't let an organism absorb its children.** Handing one agent "build the features section" produces approximated spacing and guessed font sizes. Handing it a single molecule with exact values produces an exact match.
 - **Don't treat a new target as permission to replace existing work.** Preserve other sites' namespaces, tokens, and stories. Ask before touching an existing one.
 - **Don't skip the story for a state you already built.** An unexported state is invisible to review and to the test runner, which is the same as not having extracted it.
+- **Don't add a `ui/` tier or a `UI/…` sidebar section.** Styled Button/Tabs/Select/Dialog are atoms. A parallel primitives layer is how a Storybook ends up with a fifth section, primitives without stories, and molecules that "compose" them from the wrong side.
+- **Don't add a component after the tiers are "done" without re-running the audit.** Later additions (menus, text effects, shared constants) are where molecules start importing molecules and a story quietly never gets written.
 - **Don't put page-specific styling in a global stylesheet.** Scope it to the site's token namespace or the template, or it will bleed into every other site's stories.
 - **Don't clone into a project whose theme you don't control.** Its tokens, resets and fonts will fight the clone's. Separate project first; port later is a full rewrite.
 - **Don't judge fidelity by eye.** Section heights can be off by 100+ px and look fine. Diff geometry against the original with numbers.

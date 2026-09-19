@@ -73,3 +73,37 @@ Hash each section's subtree (tag + rect size + ~24 computed properties for every
 - **A backgrounded/hidden browser tab does not run animation frames.** `document.visibilityState === 'hidden'`. Anything that completes on `requestAnimationFrame` or `ResizeObserver` (headless-primitive panel unmounting, indicator measurement, transitions) stalls: an outgoing panel stays mounted, an indicator measures with the fallback font. A screenshot forces a frame, so take one (tiny scale is fine) between the interaction and the measurement.
 - **Web fonts load after first paint.** Measure after `document.fonts` reports `loaded`, or after a forced frame.
 - **Do not judge by eye at reduced scale.** Sub-pixel and spacing errors of 20–100px hide inside a 0.5×-scaled screenshot.
+
+## 5. Measuring other viewports when the tool cannot resize
+
+Some automation tools report a successful window resize but leave `innerWidth` unchanged, and the target site's CSP (`frame-ancestors`) forbids framing it. To measure 768/390 anyway:
+
+1. Fetch the page HTML, strip `<script>` tags (no hydration, analytics or consent banners), and serve that copy from localhost with a tiny server that **proxies every other asset** (CSS, fonts, images) from the origin.
+2. Load it in same-origin `<iframe width="390">`, `width="768"`, `width="1440"` on a harness page (give the iframes `flex: none`, or a flex row will squeeze them and every width will be wrong). Each iframe's own media queries apply, and `iframe.contentDocument` is measurable.
+3. **Calibrate first**: measure the 1440 iframe with the geometry script from §1 and compare it with numbers from the real page. Note which sections disagree and why (typically things added by scripts, or viewport-height rules) and apply those as corrections at every width.
+4. Record the responsive findings — breakpoints (from the compiled `@media` rules, not assumed), section geometry per width, type scale per width, which elements hide or stack — in `docs/research/<site-key>/RESPONSIVE.md`.
+
+Limits: no JavaScript runs, so open menus, carousel state and classes set by scripts are not represented; measure those separately or list them as gaps. Do not commit the fetched HTML; commit only the scripts that produce it.
+
+## 6. Inspecting script-driven states (open menus, popovers) and hydrated heights
+
+A script-free mirror cannot show a menu that only exists after a click, and it misses heights that scripts add
+(e.g. an inline button that makes a heading taller). Add a **hydrated** mode to the mirror: keep the site's own inline
+and same-origin scripts, still strip third-party ones (analytics, consent, ads).
+
+- Islands that hydrate on idle or when visible need **rendered frames**. In a backgrounded automation tab, scroll the
+  target into view and take a tiny screenshot; only then check whether it has hydrated.
+- Open a Radix-style select by dispatching `pointerdown` (`button: 0, pointerType: 'mouse'`); a plain `click()` is ignored.
+- The hydrated page may follow the browser into `html.dark`. Remove the class before recording light-theme styles.
+- Compare **static and hydrated** geometry at each width. Corrections often apply at only some widths (here +24px on
+  headings from 768 up, none at 390) — decide per breakpoint, not globally.
+- Record the measurements of each open state (position, size, font, colours) and build it from those; note anything
+  you could not open (accordion panels) as a known gap.
+
+## 7. Compare against measured numbers, one section at a time
+
+Keep a table of reference rects per section per width (relative to the section top, so an error above does not shift
+everything below) and diff the clone against it with a script that prints only mismatches beyond ±1px. Fix the first
+mismatch, re-run, and expect each remaining difference to have a *specific* cause: a 1px border that changes a text
+wrap, a flex item that shrink-wraps instead of stretching, a media query written before the base rule it overrides,
+an explicit `<br>` or newline the source has and you flattened.

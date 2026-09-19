@@ -42,6 +42,20 @@ export default config;
 
 The generator writes `preview.tsx`, not `preview.ts` — edit the file that exists rather than creating a second one beside it.
 
+Add a fourth: **fix the sidebar order.** Storybook sorts alphabetically, which puts `Pages` before `Templates` and can wedge `Foundations` between `Atoms` and `Molecules`. Set an explicit order, smallest to largest, under the site's root section:
+
+```tsx
+parameters: {
+  options: {
+    storySort: {
+      order: ['<Site>', ['Foundations', 'Atoms', 'Molecules', 'Organisms', 'Templates', 'Pages']],
+    },
+  },
+},
+```
+
+Anything not listed sorts after the listed sections. `scripts/audit-tiers.py` fails if `storySort` is missing, and flags any story whose section is not one of the tiers (for example a `UI/…` section for primitives — those are atoms).
+
 Three jobs: load the extracted fonts, load the token custom properties, and register the capture viewports. Add a background matching the site's page colour, or every dark-site story renders on white.
 
 ```tsx

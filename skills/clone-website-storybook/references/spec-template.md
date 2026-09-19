@@ -82,6 +82,15 @@ Paths are as referenced from a story through `staticDirs`, not filesystem paths.
 - **Mobile 390px:** <what changes>
 - **Breakpoint:** switches at ~<N>px
 - **Story coverage:** which widths need their own story export
+
+## Source and layout
+- **Values from:** <page source (token block / class strings / props) | DOM (getComputedStyle) | both>
+- **Measured geometry:** <section or element `[top, height]` on the original at the reference width, from `layout-diff.md`>
+
+## Assumptions and known gaps
+Anything not extracted, one line each with the reason — never state a guess as a fact.
+- ASSUMPTION: <e.g. header switches at scrollY 600 — measuring froze the tab; only known: absent at 0, present at 900>
+- GAP: <e.g. WebGL globe replaced by a static stand-in; animated toasts are a still>
 ```
 
 ## Worked fragment

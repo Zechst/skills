@@ -62,13 +62,19 @@ Story titles mirror the tree: `<Site>/Atoms/Button`, `<Site>/Organisms/SiteHeade
 
 **A Storybook project.** If one exists, use it and match its conventions. If not, scaffold per `references/storybook-setup.md`.
 
+**Decide where the clone lives and how it is styled — before writing any code.** Ask the user (or infer from the host project) three things, because changing them later is a migration, not a tweak:
+
+1. *Isolation.* Will the clone share a project with an existing app or design system? If the host has its own theme (`--radius`, `--accent`, font, Tailwind config), a clone in the same project will collide with it. Prefer a **separate project/repo** with its own Storybook whenever the host has a theme of its own; nest it only for throw-away studies.
+2. *Styling system.* Match the source stack you detect in Phase 0. A Tailwind + shadcn/Radix site is best cloned with Tailwind + a headless primitive library, using the site's own token names, so its class strings can be copied nearly verbatim. Plain scoped CSS is a valid stop-gap in a shared project (scope every rule under one root class), but expect to port it.
+3. *Behaviour layer.* Prefer a headless primitive library (Base UI, Radix) for tabs, selects, dialogs and menus over hand-rolled `role` attributes — you get keyboard navigation, focus handling and ARIA for free, and the source site almost certainly does the same.
+
 Examples below use `npm`; substitute the project's package manager.
 
 ## Non-negotiables
 
 These are the differences between a clone and a "close enough" mess.
 
-1. **Extract, never estimate.** Every value in a spec comes from `getComputedStyle()`. "It looks like `text-lg`" is wrong when the computed value is `18px/24px` and `text-lg` is `18px/28px`. If a builder has to guess a colour, a font size, or a padding value, extraction failed.
+1. **Extract, never estimate.** Every value in a spec comes from the page itself: `getComputedStyle()` for what renders, and the page's own source (`:root` token blocks, compiled CSS, class strings, framework props — see `references/source-recon.md`) for what it declares. "It looks like `text-lg`" is wrong when the computed value is `18px/24px` and `text-lg` is `18px/28px` — and sites redefine scales (a theme where `text-sm` is 13px and `text-base` is 14px), so never assume a framework's defaults. If a builder has to guess a colour, a font size, or a padding value, extraction failed. If a value truly cannot be extracted (tooling blocked, time-boxed), write it in the spec as an **ASSUMPTION** with the reason, never as a fact.
 
 2. **Identify the interaction model before building.** Scroll through a section slowly *before* clicking anything. If content changes on its own as you scroll, it is scroll-driven — find the mechanism (`IntersectionObserver`, `scroll-snap`, `position: sticky`, `animation-timeline`, scroll listener). Only if nothing moves on scroll do you click and hover to test. Building click-based tabs when the original is scroll-driven is the most expensive error available to you: it is a rewrite, not a CSS fix. Record the verdict in the spec as `INTERACTION MODEL: <static | click | scroll | hover | time>`.
 
@@ -81,6 +87,16 @@ These are the differences between a clone and a "close enough" mess.
 5. **The spec file is the contract.** Every component gets a spec written *before* any code. Builders receive the spec contents inline in their prompt — never "go read the spec file", never "see TOKENS.md for colours". A builder should need zero external reads. The file persists as the artifact you audit when something looks wrong.
 
 6. **Stay green.** Typecheck after every component; `npm run build-storybook` after every tier. A broken library is never acceptable, even temporarily.
+
+## Phase 0 — Source recon
+
+Before opening the browser, read what the page publishes about itself. Follow `references/source-recon.md`:
+
+1. `curl` the HTML and every stylesheet.
+2. **Detect the stack** (Astro/Next islands, shadcn `data-slot`, Radix ids, Tailwind theme variables, SVG sprite) and record it in `TOPOLOGY.md`. It decides the styling system and the primitive library.
+3. Pull the **token blocks** (`:root`, dark selector) and fonts verbatim; parse framework **props** for copy, lists and data tables; download an **icon sprite** once instead of extracting hundreds of SVGs.
+
+This is often faster and more exact than DOM extraction, and it is unaffected by lazy loading or browser-tool restrictions. It does not replace measuring layout and behaviour in the browser.
 
 ## Phase 1 — Reconnaissance
 
@@ -101,13 +117,17 @@ Write findings to `docs/research/<site-key>/BEHAVIORS.md`. This is your behaviou
 
 **Topology.** Map every section top to bottom with a working name, its visual order, whether it is flow content or a fixed overlay, its z-index layer, and its interaction model. Assign each section a provisional tier. Write to `docs/research/<site-key>/TOPOLOGY.md`.
 
-Phase 1 is done when `BEHAVIORS.md` and `TOPOLOGY.md` exist and every section in the topology carries a tier and an interaction model.
+**Geometry.** After a slow scroll pass, record every section's `[top, height]` and the page's total height at the reference viewport width (script in `references/layout-diff.md`) and put it in the topology table. This table is the acceptance test for Phase 5 — without it you can only judge the clone by eye, and layout drift of 100+ px is invisible by eye. Also note section ids that change between loads (numeric suffixes) so nothing selects by them.
+
+Phase 1 is done when `BEHAVIORS.md` and `TOPOLOGY.md` exist and every section in the topology carries a tier, an interaction model, and measured geometry.
+
+**If the browser tooling blocks, filters or freezes**, see `references/blocked-tooling.md` before falling back to estimates.
 
 ## Phase 2 — Foundation
 
 Sequential, and you do it yourself — it touches shared files. Follow `references/storybook-setup.md` for scaffolding and config.
 
-1. **Tokens.** Write `src/tokens/<site-key>.ts` — colours, type scale, spacing, radii, shadows, easings — from the extracted computed values. Expose them as CSS custom properties and add a Storybook docs page rendering swatches and the type scale. This page is a deliverable.
+1. **Tokens.** If Phase 0 found the site's own token block, **adopt it verbatim** — keep the site's variable names (in a Tailwind project, as the `@theme`, so the site's class strings like `bg-accent-100` work unchanged) and include the dark set if present. Otherwise write `src/tokens/<site-key>.ts` — colours, type scale, spacing, radii, shadows, easings — from the extracted computed values. Either way expose them as CSS custom properties and add a Storybook docs page rendering swatches and the type scale; prove the theme by rendering every colour with *only* utility classes and asserting the computed values match the source. This page is a deliverable. Note that a global reset (Tailwind preflight) changes computed values across the whole page (default `line-height`, borders, button font) — turn it on deliberately and diff the result (`layout-diff.md` §2).
 2. **Fonts.** Load the real families. Register them in `.storybook/preview.ts` so every story renders in the right typeface.
 3. **Assets.** Scroll the full page first — lazy-loaded images report `naturalWidth: 0` and may not exist in the DOM until they enter the viewport, so enumerating before a scroll pass silently undercounts. Then enumerate with the discovery script in `references/extraction-scripts.md` and download into `public/<site-key>/` with a uniquely-named script (`scripts/download-<site-key>-<page-key>.mjs`), batched 4 at a time with error handling. Derive filenames per that script's rule, never from the URL's last path segment — CDN transform URLs end in `f=auto,fit=scale-down,width=2560`, so a naive basename collides every transformed image onto one file. Confirm `staticDirs` in `.storybook/main.ts` serves the directory.
 4. **Icons.** Extract inline SVGs as components under `atoms/icons/`, named by visual function (`SearchIcon`, `ArrowRightIcon`, `LogoIcon`). Deduplicate across the site.
@@ -151,11 +171,13 @@ Assembly is done when the page story renders the full clone and `npm run build-s
 
 Do not declare the clone complete at the end of Phase 4.
 
-1. Put the original and the page story side by side at 1440px, then at 390px.
-2. Compare section by section, top to bottom.
+1. **Run the layout diff first** (`references/layout-diff.md` §1): section `[top, height]` and total page height on the clone versus the topology table. Fix the *first* non-zero height, re-measure, repeat. Heights must match exactly and tops within 1px before you move on to eyeballing. Do this at 1440px, then at 390px.
+2. Put the original and the page story side by side at 1440px, then at 390px. Compare section by section, top to bottom — at full scale, not a reduced screenshot.
 3. For each discrepancy: check the spec first. If the spec is wrong, re-extract, update the spec, then fix the component. If the spec is right and the build diverged, fix the build. Never patch a component without reconciling its spec — the spec is what the next run reads.
-4. Exercise every interaction: scroll the whole page, click every tab, hover every interactive element. Confirm scroll feel, header transitions, tab switching and entrance animations.
-5. Run `npm run test-storybook` if the project has it configured.
+4. Exercise every interaction: scroll the whole page, click every tab, hover every interactive element, and use the **keyboard** (arrow keys through tabs, Tab order, Escape on overlays). Confirm scroll feel, header transitions, tab switching and entrance animations.
+5. Run `npm run test-storybook` if the project has it configured. If the test browser is not installed, say so in the report instead of skipping silently.
+
+**Refactoring later?** Any swap of implementation (hand CSS → utility classes, hand-rolled widgets → a headless primitive, adding a reset) needs a *snapshot → change → diff* pass with every difference classified as invisible, intended, or a bug (`layout-diff.md` §2). Capture every state, and confirm each baseline is real before trusting it.
 
 ## Pre-build checklist
 
@@ -172,6 +194,9 @@ Before writing code for any component, verify every box. If you cannot, go back 
 - [ ] All images identified, including overlays and layered compositions
 - [ ] Responsive behaviour documented for desktop and mobile with the breakpoint
 - [ ] Text is verbatim, not paraphrased
+- [ ] Tokens/copy/data taken from the page's own source where it publishes them (Phase 0), not re-derived
+- [ ] Any value that could not be extracted is marked ASSUMPTION in the spec
+- [ ] Interactive widgets use the headless primitive the source uses (or its closest equivalent), with keyboard behaviour checked
 - [ ] Spec is under ~150 lines; if not, drop a tier and split
 
 ## What not to do
@@ -183,6 +208,13 @@ Lessons from failed clones, each of which cost hours. The non-negotiables above 
 - **Don't treat a new target as permission to replace existing work.** Preserve other sites' namespaces, tokens, and stories. Ask before touching an existing one.
 - **Don't skip the story for a state you already built.** An unexported state is invisible to review and to the test runner, which is the same as not having extracted it.
 - **Don't put page-specific styling in a global stylesheet.** Scope it to the site's token namespace or the template, or it will bleed into every other site's stories.
+- **Don't clone into a project whose theme you don't control.** Its tokens, resets and fonts will fight the clone's. Separate project first; port later is a full rewrite.
+- **Don't judge fidelity by eye.** Section heights can be off by 100+ px and look fine. Diff geometry against the original with numbers.
+- **Don't write your own global resets alongside a framework reset.** A `h1,p { margin: 0 }` rule out-ranked every utility margin on paragraphs and silently deleted spacing for the whole page. Rely on the one reset, and check specificity before adding another.
+- **Don't trust a baseline you did not verify.** A snapshot taken right after a programmatic click can record the unchanged state. Compare state B to state A before using it.
+- **Don't assume a framework's scale.** Sites redefine `text-sm`, spacing and radii; read the theme.
+- **Don't stall on tooling.** If extraction is blocked or a tab freezes, switch to the source route (`source-recon.md`), record assumptions honestly, and continue — see `blocked-tooling.md`.
+- **Don't hide state with `[hidden]` in a stacked layout.** A reset that forces `[hidden] { display: none !important }` breaks tab groups whose panels must share one grid cell so the tallest sets the height; hide with `visibility`/`opacity` and switch the attribute off.
 
 ## Report
 
@@ -191,6 +223,8 @@ Lessons from failed clones, each of which cost hours. The non-negotiables above 
 - Spec files written, which must equal the component count
 - Stories written, and total states covered
 - Assets downloaded by type
-- `build-storybook` result and `test-storybook` result
+- `build-storybook` result and `test-storybook` result (and, if the test browser was unavailable, that the `play` tests did not run)
+- **Layout diff:** per-section `[top, height]` deltas versus the original and the total page-height delta
+- Detected source stack and which values came from source versus the DOM
 - Existing namespaces preserved, and any replacement the user approved
-- Known gaps and remaining visual discrepancies
+- **Assumptions** (values not extracted, with reasons) and **known gaps** (animated/WebGL pieces replaced by stand-ins, unbuilt states, unextracted breakpoints) and remaining visual discrepancies

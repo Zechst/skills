@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Refactor proof: snapshot every story's element rects + computed styles, then diff two snapshots.
-//   node scripts/style-snapshot.mjs snap <dir> [--filter=substr] [--url=http://localhost:6020]
+//   node scripts/style-snapshot.mjs snap <dir> [--filter=substr] [--url=http://localhost:6006]
 //   node scripts/style-snapshot.mjs diff <dirA> <dirB> [more dirs to treat as noise baselines are passed as A, A2]
 // Elements are keyed by their tag path, so the DOM must not change between runs (only classes/styles may).
 import { chromium } from 'playwright'
@@ -13,7 +13,7 @@ const WIDTHS = (process.argv.find((a) => a.startsWith('--widths=')) ?? '--widths
 const PROPS = ['display','position','top','left','width','height','marginTop','marginRight','marginBottom','marginLeft','paddingTop','paddingRight','paddingBottom','paddingLeft','color','backgroundColor','backgroundImage','borderTopWidth','borderTopColor','borderTopStyle','borderBottomWidth','borderBottomColor','borderLeftWidth','borderRightWidth','borderTopLeftRadius','fontFamily','fontSize','fontWeight','lineHeight','letterSpacing','textAlign','textTransform','textDecorationLine','opacity','transform','boxShadow','overflow','zIndex','flexDirection','justifyContent','alignItems','gap','gridTemplateColumns','filter','maskImage','whiteSpace','transitionProperty','transitionDuration','transitionTimingFunction','animationName','animationDuration','cursor','pointerEvents','visibility']
 
 async function snap(dir) {
-  const base = flag('url', 'http://localhost:6020')
+  const base = flag('url', 'http://localhost:6006')
   const filter = flag('filter', '')
   const index = await (await fetch(`${base}/index.json`)).json()
   const ids = Object.values(index.entries).filter((e) => e.type === 'story' && e.id.includes(filter)).map((e) => e.id)

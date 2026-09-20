@@ -6,7 +6,7 @@ Browser-automation tools sometimes filter, truncate, throttle or freeze. That is
 
 Symptom: the result is replaced by a message such as `[BLOCKED: Cookie/query string data]` even though your script returned only styles or text.
 
-- Some tools scan return values for cookie-like or query-string-like patterns. The trigger is not always what you think — in this project it fired on large style dumps and on `key=value` formatted strings, but not on `JSON.stringify(...)` of small arrays.
+- Some tools scan return values for cookie-like or query-string-like patterns. The trigger is not always obvious: large style dumps and `key=value` strings can fire it where `JSON.stringify(...)` of small arrays does not.
 - Return **`JSON.stringify` of compact arrays or objects**, not templated `key=value` strings.
 - Strip URLs down to their path (`u.split('?')[0]`) or return only a hostname/extension.
 - Return **numbers and short labels** first (`[tag, width, height, fontSize]`), and expand only what you need.

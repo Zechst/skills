@@ -1,6 +1,6 @@
 ---
 name: clone-website-storybook
-description: Reverse-engineer one or more live websites into a Storybook component library organised by atomic design — extract computed CSS, assets, content and behaviour section by section, write a spec per component, then build atoms, molecules, organisms, templates and pages with one story per extracted state. Use when the user wants to clone, replicate, rebuild or copy a website, asks for a pixel-perfect clone, or wants a design system extracted from a live site.
+description: Reverse-engineer one or more live websites into a Storybook component library organised by atomic design — extract computed CSS, assets, content and behaviour section by section, write a spec per component, then build atoms, molecules, organisms, templates and pages with one story per extracted state. Use when the user wants to clone, replicate, rebuild or copy a website, asks for a pixel-perfect clone, or wants a design system extracted from a live site. Not for rebuilding a site as an app page without a Storybook library.
 license: MIT
 ---
 
@@ -62,17 +62,17 @@ Story titles mirror the tree: `<Site>/Atoms/Button`, `<Site>/Organisms/SiteHeade
 
 ## Requirements
 
-**Browser automation is mandatory.** You need a tool that can (a) execute JavaScript in the page context and return the result, and (b) capture screenshots at a set viewport. Chrome DevTools MCP, Playwright (MCP or library), Puppeteer, or Browserbase all qualify. If several are available prefer Chrome DevTools MCP. If none is available, ask the user which they have and how to connect it, then stop — this skill cannot run without it.
+**Browser automation is mandatory.** You need a tool that can (a) execute JavaScript in the page context and return the result, and (b) capture screenshots at a set viewport. Chrome DevTools MCP, Claude in Chrome, Playwright (MCP or library), Puppeteer, or Browserbase all qualify. If several are available prefer Chrome DevTools MCP. If none is available, ask the user which they have and how to connect it, then stop — this skill cannot run without it.
 
 **A Storybook project.** If one exists, use it and match its conventions. If not, scaffold per `references/storybook-setup.md`.
 
 **Decide where the clone lives and how it is styled — before writing any code.** Ask the user (or infer from the host project) three things, because changing them later is a migration, not a tweak:
 
 1. *Isolation.* Will the clone share a project with an existing app or design system? If the host has its own theme (`--radius`, `--accent`, font, Tailwind config), a clone in the same project will collide with it. Prefer a **separate project/repo** with its own Storybook whenever the host has a theme of its own; nest it only for throw-away studies.
-2. *Styling system.* Match the source stack you detect in Phase 0. A Tailwind + shadcn/Radix site is best cloned with Tailwind + a headless primitive library, using the site's own token names, so its class strings can be copied nearly verbatim. Plain scoped CSS is only a stop-gap for a first pass (scope every rule under one root class): before the library is called done, port it to Tailwind utilities written in the JSX (shadcn style: `cva` variants, `cn()`, `data-slot` on parts, `data-[state]:` variants). Do it tier by tier, and prove each batch with `scripts/style-snapshot.mjs` (snapshot every story's rects and computed styles at 1710/768/390 before, snapshot again after, diff; classify every difference as invisible, intended or a bug). Leave outside the components only what utilities cannot express: `@property` rules, and `@keyframes` (put them in the theme next to an `--animate-*` variable so components use `animate-*` classes). Scroll timelines and generated CSS such as a beam become arbitrary-property classes (`supports-[animation-timeline:view()]:…`, `data-[on]:after:[mask-image:…]`); write mask layers as longhands, because the `mask` shorthand resets `mask-composite` depending on class order. Give the page root a class string (not a stylesheet class). `style-snapshot.mjs snap` takes `--widths=1710,390` to halve the run. Tests and stories must hook `data-slot`/`data-*` attributes, never styling class names. Close the manual rows of the motion inventory with scripts, not by eye: `scripts/hover-audit.mjs` (force `:hover` on every control, transitions off, diff the changed properties original vs clone), `scripts/tab-order-audit.mjs` (Tab through the page, diff the focus order) and `scripts/scroll-audit.mjs` (scroll to fixed offsets, diff the header state). A plain mouse move is unreliable on a heavy clone (frames starve and transitions do not finish), and some originals carry inline styles that neutralise their own hover classes, so trust the computed result over the class string.
+2. *Styling system.* Match the source stack you detect in Phase 0. A Tailwind + shadcn/Radix site is cloned with Tailwind + a headless primitive library, using the site's own token names. Plain scoped CSS is only a stop-gap; port it to utilities before the library is called done, following `references/styling.md`.
 3. *Behaviour layer.* Prefer a headless primitive library (Base UI, Radix) for tabs, selects, dialogs and menus over hand-rolled `role` attributes — you get keyboard navigation, focus handling and ARIA for free, and the source site almost certainly does the same.
 
-Examples below use `npm`; substitute the project's package manager.
+Examples below use `npm`; substitute the project's package manager. The `.mjs` scripts import `playwright`; install it in the project or run them from a folder that has it.
 
 ## Non-negotiables
 
@@ -146,7 +146,7 @@ Sequential, and you do it yourself — it touches shared files. Follow `referenc
 4. **Icons.** Extract inline SVGs as components under `atoms/icons/`, named by visual function (`SearchIcon`, `ArrowRightIcon`, `LogoIcon`). Deduplicate across the site.
 5. **Types.** Namespaced interfaces for the content structures observed.
 
-Delete the scaffold's own demo content (`src/stories/`) before writing anything. It ships stories that fail a strict typecheck and clutter the sidebar with a fake design system that is not the one you are extracting.
+Delete the scaffold's own demo content (`src/stories/`) before writing anything, after confirming those files are the generator's and not the project's own. It ships stories that fail a strict typecheck and clutter the sidebar with a fake design system that is not the one you are extracting.
 
 Foundation is done when `npm run storybook` boots, the tokens docs page renders, and a smoke story displays a downloaded asset in the correct font.
 
@@ -221,7 +221,7 @@ Target for a finished library: a **Default** per component, plus only the states
 
 ## Phase 7 — Distribute as a framework-free kit
 
-Do this after the prune, when the library is meant to be reused. Read `references/distribution.md`. In short: the React + Base UI + Tailwind components stay the **only hand-edited source**; tokens, compiled CSS and HTML snippets are **generated** from them, and one small vanilla script flips the same `data-*` attributes for the few interactive primitives. `dist/` is never edited by hand and CI fails if regenerating it changes anything. Every component is marked `static`, `static + vanilla JS` or `React only` in a generated support table. Extend the kit with the primitives a new product needs (forms, overlays, feedback, content), each labelled **extracted** or **derived**.
+Only when the library is meant to be reused, after the prune. Follow `references/distribution.md`.
 
 ## Pre-build checklist
 
@@ -250,19 +250,9 @@ Lessons from failed clones, each of which cost hours. The non-negotiables above 
 
 - **Don't build one monolithic commit.** The point of tier-by-tier progress is a verified-green library at every step.
 - **Don't let an organism absorb its children.** Handing one agent "build the features section" produces approximated spacing and guessed font sizes. Handing it a single molecule with exact values produces an exact match.
-- **Don't treat a new target as permission to replace existing work.** Preserve other sites' namespaces, tokens, and stories. Ask before touching an existing one.
-- **Don't skip the story for a state you already built.** An unexported state is invisible to review and to the test runner, which is the same as not having extracted it.
-- **Don't ship a still where the source moves.** "Static stand-in", "the toasts are a still", "hover preview not built" are unfinished work, not documented gaps. Motion the user has not approved dropping gets built.
-- **Don't stop at CSS keyframes.** Most of what moves on a modern marketing site is driven by JavaScript: GSAP and framer-motion timelines, intervals, springs, number-roll and text-effect libraries, canvas/WebGL. `getComputedStyle` and the keyframes list show none of it. Read the component scripts.
-- **Don't add a `ui/` tier or a `UI/…` sidebar section.** Styled Button/Tabs/Select/Dialog are atoms. A parallel primitives layer is how a Storybook ends up with a fifth section, primitives without stories, and molecules that "compose" them from the wrong side.
-- **Don't add a component after the tiers are "done" without re-running the audit.** Later additions (menus, text effects, shared constants) are where molecules start importing molecules and a story quietly never gets written.
 - **Don't put page-specific styling in a global stylesheet.** Scope it to the site's token namespace or the template, or it will bleed into every other site's stories.
-- **Don't clone into a project whose theme you don't control.** Its tokens, resets and fonts will fight the clone's. Separate project first; port later is a full rewrite.
-- **Don't judge fidelity by eye.** Section heights can be off by 100+ px and look fine. Diff geometry against the original with numbers.
 - **Don't write your own global resets alongside a framework reset.** A `h1,p { margin: 0 }` rule out-ranked every utility margin on paragraphs and silently deleted spacing for the whole page. Rely on the one reset, and check specificity before adding another.
 - **Don't trust a baseline you did not verify.** A snapshot taken right after a programmatic click can record the unchanged state. Compare state B to state A before using it.
-- **Don't assume a framework's scale.** Sites redefine `text-sm`, spacing and radii; read the theme.
-- **Don't stall on tooling.** If extraction is blocked or a tab freezes, switch to the source route (`source-recon.md`), record assumptions honestly, and continue — see `blocked-tooling.md`.
 - **Don't hide state with `[hidden]` in a stacked layout.** A reset that forces `[hidden] { display: none !important }` breaks tab groups whose panels must share one grid cell so the tallest sets the height; hide with `visibility`/`opacity` and switch the attribute off.
 
 ## Report
@@ -277,4 +267,4 @@ Lessons from failed clones, each of which cost hours. The non-negotiables above 
 - **Layout diff:** per-section `[top, height]` deltas versus the original and the total page-height delta
 - Detected source stack and which values came from source versus the DOM
 - Existing namespaces preserved, and any replacement the user approved
-- **Assumptions** (values not extracted, with reasons) and **known gaps** (animated/WebGL pieces replaced by stand-ins, unbuilt states, unextracted breakpoints) and remaining visual discrepancies
+- **Assumptions** (values not extracted, with reasons) and **known gaps** (unbuilt states, unextracted breakpoints, and any motion the user approved dropping) and remaining visual discrepancies

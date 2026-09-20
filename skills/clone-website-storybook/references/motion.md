@@ -3,7 +3,7 @@
 `getComputedStyle`, screenshots and the keyframes list see only a fraction of what moves on a modern site. Use this order.
 
 ## 1. Generate the inventory
-`python3 scripts/motion-inventory.py <url> --out docs/research/<site-key>/MOTION.md` lists CSS keyframes (with the rules that use them), scroll/view timelines, `@property`, and every script the page loads with the motion signatures inside it. Treat the list as a minimum. Add rows for anything you see moving that it lacks.
+`python3 <skill-dir>/scripts/motion-inventory.py <url> --out docs/research/<site-key>/MOTION.md` lists CSS keyframes (with the rules that use them), scroll/view timelines, `@property`, and every script the page loads with the motion signatures inside it. Treat the list as a minimum. Add rows for anything you see moving that it lacks.
 
 ## 2. Read each scripted component
 Framework islands and bundles carry the numbers you need.

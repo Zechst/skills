@@ -17,7 +17,7 @@ You are a **foreman walking the job site**, not a two-phase inspect-then-build p
 A running Storybook is the primary output — not a page in a web app. Success means:
 
 - Every component lives at its correct **tier** with a colocated `.stories.tsx`
-- **One state, one story.** Every state you extracted — default, hover, scrolled, each tab, each breakpoint — is a named story export. A state you cannot select in the Storybook sidebar is a state you did not extract.
+- **One state, one story.** Every state you extracted — default, hover, scrolled, each tab, each breakpoint — is a named story export. A state you cannot select in the Storybook sidebar is a state you did not extract. This is the working rule while extracting; Phase 6 then folds variants into controls and behaviours into `play` so the finished library stays lean.
 - Design tokens are a real token module surfaced as a Storybook docs page
 - `npm run build-storybook` passes — the library stays **green**
 - The assembled page story is visually indistinguishable from the original
@@ -162,7 +162,7 @@ Within a tier, for each component:
 
 **Build.** If your harness supports parallel subagents, dispatch one per component within the tier, each receiving its spec inline. Otherwise build them yourself in the same order. Either way the component is not done until it has:
 - The implementation at its tier path
-- A colocated `.stories.tsx` with **one export per state in the spec**
+- A colocated `.stories.tsx` with **one export per state in the spec** (Phase 6 prunes these to the distinct ones once the clone passes QA)
 - A `play` function asserting the interaction for any non-static component
 - A passing typecheck
 
@@ -201,6 +201,23 @@ Do not declare the clone complete at the end of Phase 4.
 7. Run `npm run test-storybook` if the project has it configured. If the test browser is not installed, say so in the report instead of skipping silently.
 
 **Refactoring later?** Any swap of implementation (hand CSS → utility classes, hand-rolled widgets → a headless primitive, adding a reset) needs a *snapshot → change → diff* pass with every difference classified as invisible, intended, or a bug (`layout-diff.md` §2). Capture every state, and confirm each baseline is real before trusting it.
+
+## Phase 6 — Prune the stories
+
+Phase 3 makes one story per extracted state so nothing is missed. That is scaffolding: left alone the library has three stories per component, most of them the same picture with one prop changed. Once Phase 5 has passed, cut it back so it is lean, without losing any proof.
+
+1. **Snapshot first.** `python3 <skill-dir>/scripts/story-inventory.py snap /tmp/stories-before.json`. It records every story, whether it has a `play`, and how many `expect(` calls each file holds. Also run the layout diff / style snapshot once so the assembled page has a baseline: pruning touches only `*.stories.tsx`, so the page must not change.
+2. **Classify every story** into one of five:
+   - **State** — a visually distinct thing a reviewer must see (top vs scrolled header, free vs paid card, an open overlay). Keep.
+   - **Variant** — the same component with a value changed (button variant, size, disabled, which tab, which person, light vs dark). Fold into one story with `argTypes` controls. Dark is the toolbar theme, not a story.
+   - **Behaviour** — a click, hover, key or timer proof (`Click`, `HoverAndEscape`, `AutoRotate`). Move the assertions into a `play` on the story they act on; one `play` may run several steps. Never drop the assertions.
+   - **Viewport** — `Mobile` / `Tablet`. Keep one `Mobile` per component whose layout really changes; `Tablet` is the viewport toolbar unless its layout has its own design.
+   - **Duplicate** — renders the same DOM as another story, or exists only because an optional prop can be omitted (`LinksOnly`). Delete.
+3. **Keep the referenced ones.** Any story named in a `MOTION.md` row or a spec must survive, or the row is re-pointed at the story that now holds the proof.
+4. **Do it a tier at a time**, atoms first, and run the tier's tests after each. Then `story-inventory.py snap /tmp/stories-after.json` and `story-inventory.py diff /tmp/stories-before.json /tmp/stories-after.json`: it lists every removed story and **fails if any file lost `expect(` assertions or its last `play`**. Explain each removal, not each survivor.
+5. Re-run `build-storybook`, `audit-tiers.py`, `motion-inventory.py --check`, and confirm the page story is unchanged.
+
+Target for a finished library: a **Default** per component, plus only the states, one `Mobile` where it differs, and the `play` proofs. As a guide, around 1.5 stories per component; a component with more needs a reason.
 
 ## Pre-build checklist
 
@@ -249,7 +266,7 @@ Lessons from failed clones, each of which cost hours. The non-negotiables above 
 - Source URL → story path for every page built
 - Component count by tier, and reuse count (atoms shared across organisms)
 - Spec files written, which must equal the component count
-- Stories written, and total states covered
+- Stories before and after the Phase 6 prune, and total states covered
 - Assets downloaded by type
 - `build-storybook` result and `test-storybook` result (and, if the test browser was unavailable, that the `play` tests did not run)
 - **Layout diff:** per-section `[top, height]` deltas versus the original and the total page-height delta

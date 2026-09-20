@@ -51,6 +51,8 @@ A page can carry hundreds of inline `<svg>` elements. Deduplicate by hashing the
 
 ## 2. Token harvest
 
+**Check the page's own source first** (`source-recon.md` §3). Sites built on Tailwind v4 publish their full theme in `:root`/`.dark`; adopt that verbatim and use this frequency tally only when no such block exists, or to cross-check that the rendered values agree with it.
+
 Run once during Phase 2. Frequency ordering separates real tokens from one-offs.
 
 ```javascript

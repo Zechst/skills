@@ -12,7 +12,7 @@ Fill every heading. Write "N/A" only after checking — a footer still has link 
 - **Implementation:** `src/components/<site-key>/<tier>/<Name>/<Name>.tsx`
 - **Stories:** `src/components/<site-key>/<tier>/<Name>/<Name>.stories.tsx`
 - **Story title:** `<Site>/<Tier>/<Name>`
-- **Composes:** <lower-tier components this imports, or "none">
+- **Composes:** <existing lower-tier atoms/molecules reused, or "none"; if this is a new atom/molecule, one line on why no existing one fits>
 - **Reused by:** <which organisms/pages consume it — fill in as you discover them>
 - **Reference screenshot:** `docs/design-references/<site-key>/<page-key>/<name>.png`
 
@@ -46,6 +46,16 @@ State that the original derives at runtime becomes a prop here, so every state i
 ...
 
 Every value from `getComputedStyle()`. No estimates, no Tailwind class guesses.
+
+## Motion
+One row per thing that moves or responds, each tied to a `MOTION.md` row. Numbers come from the source (CSS, or the component script), never from watching.
+- **What:** <element and effect, e.g. "incident cards drift right and fade">
+- **Trigger:** <mount | scroll into view | hover | focus | click | key | interval | event from another component>
+- **Mechanism and source:** <CSS keyframes name | GSAP timeline | framer-motion variants | WAAPI | spring stiffness/damping | interval> — `<script file>`
+- **Timing:** <durations, delays, stagger, easing curve, random ranges, loop or restart rule>
+- **Coupling:** <what state it reads or emits, e.g. listens to `rotating-text:variant`>
+- **Reduced motion:** <what the source does, and what the clone does>
+- **Story proof:** <the story/play function that shows it>
 
 ## States
 
@@ -82,6 +92,15 @@ Paths are as referenced from a story through `staticDirs`, not filesystem paths.
 - **Mobile 390px:** <what changes>
 - **Breakpoint:** switches at ~<N>px
 - **Story coverage:** which widths need their own story export
+
+## Source and layout
+- **Values from:** <page source (token block / class strings / props) | DOM (getComputedStyle) | both>
+- **Measured geometry:** <section or element `[top, height]` on the original at the reference width, from `layout-diff.md`>
+
+## Assumptions and known gaps
+Anything not extracted, one line each with the reason — never state a guess as a fact.
+- ASSUMPTION: <e.g. header switches at scrollY 600 — measuring froze the tab; only known: absent at 0, present at 900>
+- GAP: <e.g. WebGL globe replaced by a static stand-in; animated toasts are a still>
 ```
 
 ## Worked fragment

@@ -9,7 +9,7 @@ import path from 'node:path'
 
 const [cmd, ...rest] = process.argv.slice(2)
 const flag = (n, d) => (rest.find((a) => a.startsWith(`--${n}=`)) ?? `--${n}=${d}`).split('=').slice(1).join('=')
-const WIDTHS = [1710, 768, 390]
+const WIDTHS = (process.argv.find((a) => a.startsWith('--widths=')) ?? '--widths=1710,768,390').split('=')[1].split(',').map(Number)
 const PROPS = ['display','position','top','left','width','height','marginTop','marginRight','marginBottom','marginLeft','paddingTop','paddingRight','paddingBottom','paddingLeft','color','backgroundColor','backgroundImage','borderTopWidth','borderTopColor','borderTopStyle','borderBottomWidth','borderBottomColor','borderLeftWidth','borderRightWidth','borderTopLeftRadius','fontFamily','fontSize','fontWeight','lineHeight','letterSpacing','textAlign','textTransform','textDecorationLine','opacity','transform','boxShadow','overflow','zIndex','flexDirection','justifyContent','alignItems','gap','gridTemplateColumns','filter','maskImage','whiteSpace','transitionProperty','transitionDuration','transitionTimingFunction','animationName','animationDuration','cursor','pointerEvents','visibility']
 
 async function snap(dir) {

@@ -28,6 +28,16 @@ Because the styling is Tailwind utilities on the markup, the generated HTML carr
 - Add Web Components as a third layer.
 - Write per-component plain CSS files — that undoes the utility-class approach and reintroduces drift.
 
+## Scripts (in `scripts/`, copy them into the project)
+
+- `build-kit.mjs` — tokens, `kit.css` (Tailwind through Vite, entry `kit/kit.css`), assets, one HTML snippet per story (rendered twice; markup that differs between loads is listed as React-only), `SUPPORT.md`. `--check` fails when `dist/` differs from git.
+- `kit/behaviour.js` — the vanilla layer (tabs first; add dialog, dropdown, tooltip, accordion, select as those primitives land).
+- `kit/contract-test.mjs` — drives the same interaction in the React story and the snippet, compares the attributes. Add a case per interactive primitive.
+- `kit/kit.workflow.yml` — CI job for `kit:check`; copy to `.github/workflows/` (needs a token with the `workflow` scope).
+- Adapt: the `kit.css` import paths, the story-title prefix stripped in `build-kit.mjs`, the public asset folder.
+
+What the first run showed: 88 stories gave 73 snippets and 15 React-only (sections with timers or tickers); a snippet with only `kit.css` linked rendered identically to the story.
+
 ## Steps
 
 1. Export tokens from `theme.css` (`tokens.css`, `tokens.json`).

@@ -40,7 +40,8 @@ Atomic design is the file layout, the split heuristic, and the build order. Clas
 src/
   tokens/<site-key>.ts
   components/<site-key>/
-    atoms/Button/{Button.tsx,Button.stories.tsx}
+    atoms/ui/Button/{Button.tsx,Button.stories.tsx}          shadcn-style primitives
+    atoms/brand/DashedBorder/{...}                           the brand's own motifs and effects
     molecules/NavItem/{NavItem.tsx,NavItem.stories.tsx}
     organisms/SiteHeader/{SiteHeader.tsx,SiteHeader.stories.tsx}
     templates/MarketingLayout/{...}
@@ -55,6 +56,8 @@ Story titles mirror the tree: `<Site>/Atoms/Button`, `<Site>/Organisms/SiteHeade
 **Primitives are atoms.** Styled headless primitives — Button, Tabs, Select, Dialog, Popover, Tooltip — are atoms even when the library builds them from several parts (`TabsList`, `TabsTab`, …): from your side they are one indivisible primitive. Do **not** create a separate `ui/` layer or a `UI/…` story section because the shadcn CLI does; point its `ui` alias at the atoms folder (`components.json`: `"ui": "@/atoms"`) and classify whatever it adds. A wrapper that only forwards to another atom is a variant of that atom, not a new one.
 
 **Import direction.** A component imports only from strictly lower tiers, and never from a sibling in its own tier. Constants, types and content that two siblings both need (nav items, tab definitions, copy) live in a `data/` or `lib/` module, not in one of the components. If a molecule needs a molecule, either the inner one is really an atom (it composes nothing), or the outer one is really an organism, or — often best — the outer one takes the inner one as a **slot** (a `renderX` prop or `children`) that the organism above fills in. Reclassify or slot; don't work around it. Record any genuine exception, with the reason, in the library's `docs/STORYBOOK.md` and pass it to the audit with `--allow`.
+
+**Split atoms into `ui/` and `brand/`.** A primitive you would find in shadcn (button, input, tabs, dialog, tooltip…) goes in `atoms/ui/` with the story title `<Site>/Atoms/Primitives/<Name>`; a motif only this brand has (custom borders, dot bands, text effects) goes in `atoms/brand/` with `<Site>/Atoms/Brand/<Name>`. Point the shadcn `ui` alias (`components.json`) at `atoms/ui`, and set `storySort` to `['Primitives', 'Brand']` under Atoms. This keeps the reusable primitives easy to find once the library grows and is what Phase 7's kit is built from.
 
 **Splitting rule.** A component that spans more than one tier must be split — an organism containing an unbuilt card is two units of work, not one. If a spec exceeds ~150 lines you have misclassified the tier; go down a level. This is mechanical. Do not override it with "but it's all related."
 

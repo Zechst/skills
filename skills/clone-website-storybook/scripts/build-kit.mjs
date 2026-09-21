@@ -46,7 +46,7 @@ const snap = async (id) => {
   await page.goto(`${sb}/iframe.html?id=${id}&viewMode=story`, { waitUntil: 'load' })
   await page.waitForSelector('#storybook-root > *', { timeout: 15000 }).catch(() => {})
   await page.waitForTimeout(800)
-  return page.evaluate(() => ({ html: document.querySelector('#storybook-root').innerHTML, kit: window.__STORYBOOK_PREVIEW__?.currentRender?.story?.parameters?.kit }))
+  return page.evaluate(() => ({ html: document.querySelector('#storybook-root').innerHTML, kit: window.__STORYBOOK_PREVIEW__?.currentRender?.story?.parameters?.kit, note: window.__STORYBOOK_PREVIEW__?.currentRender?.story?.parameters?.kitNote }))
 }
 const rows = []
 for (const s of stories) {
@@ -56,7 +56,7 @@ for (const s of stories) {
   const kit = a.kit ?? (stable ? 'static' : 'react-only')
   const file = `html/${s.title.replace(/^Cloudflare\//, '')}/${s.name.replace(/[^\w-]+/g, '-')}.html`
   if (kit !== 'react-only') w(file, `<!-- ${s.title} / ${s.name} — generated, do not edit. Link kit.css; assets resolve from ../../../assets/ -->\n${html.replaceAll('/cloudflare/', '../../../assets/')}\n`)
-  rows.push({ title: s.title, name: s.name, kit, reason: a.kit ? '' : stable ? '' : 'animated: markup changes between loads' })
+  rows.push({ title: s.title, name: s.name, kit, reason: a.note ?? (a.kit ? '' : stable ? '' : 'animated: markup changes between loads') })
 }
 await browser.close()
 

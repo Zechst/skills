@@ -47,6 +47,8 @@ What the first run showed: 88 stories gave 73 snippets and 15 React-only (sectio
 5. Generate `SUPPORT.md`; add the CI drift check (`generate && git diff --exit-code dist/`).
 6. Open one snippet and one page in plain HTML with only `kit.css` linked, and compare with the story.
 
+**Declare support on every interactive story.** The automatic result only catches markup that changes between loads. A dialog, select or menu renders identically at rest and would be mislabelled `static`. Set `parameters: { kit: 'vanilla' | 'react-only', kitNote: '…' }` on each story whose component needs JavaScript; `kitNote` appears in `SUPPORT.md`.
+
 ## Primitive coverage
 
 A brand kit needs the basics a new product or marketing page uses, not every shadcn component. Add a primitive when a live page of the brand shows it, and mark each one **extracted** (measured from a live page, with the URL) or **derived** (built from the brand's tokens because no live example exists). Never present a derived one as a clone. Skip generic, unbranded ones (calendar, chart, resizable, sidebar) until a project needs them; Base UI covers most, so adding one later is cheap.

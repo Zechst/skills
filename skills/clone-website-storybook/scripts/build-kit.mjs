@@ -14,6 +14,8 @@ const arg = (n, d) => (process.argv.find((a) => a.startsWith(`--${n}=`)) ?? `--$
 const sb = arg('storybook', 'http://localhost:6006')
 const w = (f, s) => { fs.mkdirSync(path.dirname(path.join(dist, f)), { recursive: true }); fs.writeFileSync(path.join(dist, f), s) }
 
+// Fail before touching dist/ if Storybook is not serving its index.
+const index = await (await fetch(`${sb}/index.json`)).json()
 fs.rmSync(dist, { recursive: true, force: true })
 
 // 1. Tokens: every custom property from theme.css, light (:root / @theme) and dark (.dark).
@@ -36,7 +38,6 @@ fs.copyFileSync(path.join(root, 'scripts/kit/behaviour.js'), path.join(dist, 'be
 
 // 3. HTML snippets: the rendered markup of every story, taken twice; markup that differs between the two loads is animated
 //    (timers, tickers), so that story is listed as React-only instead of being committed with a random state.
-const index = await (await fetch(`${sb}/index.json`)).json()
 const stories = Object.values(index.entries).filter((e) => e.type === 'story' && !e.title.includes('Foundations'))
 const browser = await chromium.launch()
 const page = await browser.newPage({ viewport: { width: 1440, height: 900 } })
@@ -45,7 +46,7 @@ const snap = async (id) => {
   await page.goto(`${sb}/iframe.html?id=${id}&viewMode=story`, { waitUntil: 'load' })
   await page.waitForSelector('#storybook-root > *', { timeout: 15000 }).catch(() => {})
   await page.waitForTimeout(800)
-  return page.evaluate(() => ({ html: document.querySelector('#storybook-root').innerHTML, kit: window.__STORYBOOK_PREVIEW__?.currentRender?.story?.parameters?.kit }))
+  return page.evaluate(() => ({ html: document.querySelector('#storybook-root').innerHTML, kit: window.__STORYBOOK_PREVIEW__?.currentRender?.story?.parameters?.kit, note: window.__STORYBOOK_PREVIEW__?.currentRender?.story?.parameters?.kitNote }))
 }
 const rows = []
 for (const s of stories) {
@@ -55,7 +56,7 @@ for (const s of stories) {
   const kit = a.kit ?? (stable ? 'static' : 'react-only')
   const file = `html/${s.title.replace(/^Cloudflare\//, '')}/${s.name.replace(/[^\w-]+/g, '-')}.html`
   if (kit !== 'react-only') w(file, `<!-- ${s.title} / ${s.name} — generated, do not edit. Link kit.css; assets resolve from ../../../assets/ -->\n${html.replaceAll('/cloudflare/', '../../../assets/')}\n`)
-  rows.push({ title: s.title, name: s.name, kit, reason: a.kit ? '' : stable ? '' : 'animated: markup changes between loads' })
+  rows.push({ title: s.title, name: s.name, kit, reason: a.note ?? (a.kit ? '' : stable ? '' : 'animated: markup changes between loads') })
 }
 await browser.close()
 

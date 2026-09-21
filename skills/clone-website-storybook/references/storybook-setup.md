@@ -1,6 +1,6 @@
 # Storybook setup
 
-Verified against Storybook 10.6. If the project already has Storybook, match its conventions instead of imposing these — read `.storybook/main.ts` first and adapt.
+If the project already has Storybook, match its conventions instead of imposing these — read `.storybook/main.ts` first and adapt.
 
 ## Scaffold
 
@@ -14,10 +14,10 @@ Import types from the framework package the scaffold generated (`@storybook/reac
 
 ## After scaffolding
 
-Two things the generator leaves behind, both verified against a real `npm create storybook@latest` run:
+Two things the generator leaves behind:
 
-- **Delete `src/stories/`.** The scaffold ships a demo Button/Header/Page design system. It clutters the sidebar with components you are not cloning, and its files fail a strict `tsc --noEmit` with `TS6133`, so an agent inherits a red typecheck it did not cause.
-- **Do not re-add the default addons.** Current scaffolds already install `@storybook/addon-a11y`, `@storybook/addon-vitest`, `@storybook/addon-docs`, `@chromatic-com/storybook` and `@storybook/addon-mcp`. Read `main.ts` and add only what is genuinely missing.
+- **Delete `src/stories/`** once you have confirmed it holds only the generator's files. The scaffold ships a demo Button/Header/Page design system. It clutters the sidebar with components you are not cloning, and its files fail a strict `tsc --noEmit` with `TS6133`, so an agent inherits a red typecheck it did not cause.
+- **Do not re-add the default addons.** Current scaffolds already install the a11y, vitest and docs addons. Read `main.ts` and add only what is genuinely missing.
 
 ## `.storybook/main.ts`
 
@@ -28,7 +28,7 @@ import type { StorybookConfig } from '@storybook/react-vite';
 
 const config: StorybookConfig = {
   stories: ['../src/**/*.mdx', '../src/**/*.stories.@(js|jsx|mjs|ts|tsx)'],
-  addons: ['@chromatic-com/storybook', '@storybook/addon-vitest', '@storybook/addon-a11y', '@storybook/addon-docs'],
+  addons: [/* keep the generated list */],
   staticDirs: ['../public'],
   framework: '@storybook/react-vite',
 };
@@ -42,7 +42,7 @@ export default config;
 
 The generator writes `preview.tsx`, not `preview.ts` — edit the file that exists rather than creating a second one beside it.
 
-Add a fourth: **fix the sidebar order.** Storybook sorts alphabetically, which puts `Pages` before `Templates` and can wedge `Foundations` between `Atoms` and `Molecules`. Set an explicit order, smallest to largest, under the site's root section:
+**Fix the sidebar order.** Storybook sorts alphabetically, which puts `Pages` before `Templates` and can wedge `Foundations` between `Atoms` and `Molecules`. Set an explicit order, smallest to largest, under the site's root section:
 
 ```tsx
 parameters: {
@@ -54,9 +54,9 @@ parameters: {
 },
 ```
 
-Anything not listed sorts after the listed sections. `scripts/audit-tiers.py` fails if `storySort` is missing, and flags any story whose section is not one of the tiers (for example a `UI/…` section for primitives — those are atoms).
+Anything not listed sorts after the listed sections. `<skill-dir>/scripts/audit-tiers.py` fails if `storySort` is missing, and flags any story whose section is not one of the tiers (for example a `UI/…` section for primitives — those are atoms).
 
-Three jobs: load the extracted fonts, load the token custom properties, and register the capture viewports. Add a background matching the site's page colour, or every dark-site story renders on white.
+The rest of the file has three jobs: load the extracted fonts, load the token custom properties, and register the capture viewports. Add a background matching the site's page colour, or every dark-site story renders on white.
 
 ```tsx
 import type { Preview } from '@storybook/react-vite';

@@ -102,7 +102,8 @@ Before opening the browser, read what the page publishes about itself. Follow `r
 
 1. `curl` the HTML and every stylesheet.
 2. **Detect the stack** (Astro/Next islands, shadcn `data-slot`, Radix ids, Tailwind theme variables, SVG sprite) and record it in `TOPOLOGY.md`. It decides the styling system and the primitive library.
-3. Pull the **token blocks** (`:root`, dark selector) and fonts verbatim; parse framework **props** for copy, lists and data tables; download an **icon sprite** once instead of extracting hundreds of SVGs.
+3. **Check whether the brand publishes its component library.** Search npm and GitHub for the brand's design system (`npm view @<brand>/…`, the org's repos, the site's footer or "developers" pages, and tokens named after a library such as `kumo-*`). If one exists under a licence you can use (MIT/Apache), **that is the primary source for primitives**: read its component source for the exact class strings, variants and behaviour, and use its public demo site for measurement. Credit it in a `NOTICE.md` and in each spec ("extracted from <library> <version>"). Reverse-engineering the DOM is the fallback, not the first step. Cloudflare's own Kumo (github.com/cloudflare/kumo, on the same Base UI + Tailwind stack) was found only after primitives had been guessed and had to be rebuilt.
+4. Pull the **token blocks** (`:root`, dark selector) and fonts verbatim; parse framework **props** for copy, lists and data tables; download an **icon sprite** once instead of extracting hundreds of SVGs.
 
 This is often faster and more exact than DOM extraction, and it is unaffected by lazy loading or browser-tool restrictions. It does not replace measuring layout and behaviour in the browser.
 

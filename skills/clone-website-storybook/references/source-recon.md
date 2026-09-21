@@ -92,3 +92,7 @@ If the page uses an SVG sprite, download it **once** (`/icons.svg`) and referenc
 ## What this replaces and what it doesn't
 
 Source recon replaces the *reading* half of extraction (tokens, copy, data, class strings). It does **not** replace measuring: layout, computed sizes at a viewport, scroll behaviour and every interactive state still come from the browser (`extraction-scripts.md`, `layout-diff.md`). Where you take a value from source and it affects layout, verify it against the DOM once.
+
+## 5. Look for a published component library
+
+Before measuring primitives (inputs, checkboxes, menus, tooltips…) search for the brand's own library: `npm view @<brand>/<name>`, `github.com/<brand>`, the CSS for token prefixes that name a library (Cloudflare's `--color-kumo-*`), and the product's dashboard or docs, which often use it. Check the licence. If it is permissive, `npm pack` it, extract it into the scratchpad, and read `dist/` for the class strings and the registry/typings for props; its docs site usually renders every component publicly, so you can measure without an account. Watch three traps: a library's stylesheet may pin light values behind its own `data-mode` switch (strip it if your theme toggles `color-scheme` or a `.dark` class), Tailwind v4 only emits `@theme` variables that a class uses (use `@theme static` for a token file), and its type scale may clash with yours (compare before importing). Log in through the user's own signed-in browser only if there is no public source, and never store account content.

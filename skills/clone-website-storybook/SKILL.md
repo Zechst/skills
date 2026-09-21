@@ -30,7 +30,7 @@ Atomic design is the file layout, the split heuristic, and the build order. Clas
 
 | Tier | What it is | Test |
 |---|---|---|
-| **atom** | Indivisible primitive — button, icon, badge, input, heading, logo, divider | Composes no other component |
+| **atom** | Indivisible piece — a primitive (button, input, tabs, dialog, one folder per style family) or a brand motif (icon, logo, divider, custom border, text effect) | Composes no other component (utilities and external headless libraries are fine) |
 | **molecule** | A few atoms doing one job — search field, nav item, avatar+name, stat pair, card header | Composes only atoms |
 | **organism** | A distinct page section — navbar, hero, feature grid, pricing table, footer | Composes molecules and atoms; owns section layout |
 | **template** | Page skeleton — grid, scroll container, z-index layers, sticky slots. No real content | Composes organisms as slots; renders with placeholder content |
@@ -40,8 +40,8 @@ Atomic design is the file layout, the split heuristic, and the build order. Clas
 src/
   tokens/<site-key>.ts
   components/<site-key>/
-    atoms/ui/Button/{Button.tsx,Button.stories.tsx}          shadcn-style primitives
-    atoms/brand/DashedBorder/{...}                           the brand's own motifs and effects
+    atoms/primitives/<family>/Button/{Button.tsx,Button.stories.tsx}   shadcn-style primitives, one folder per style family
+    atoms/brand/DashedBorder/{...}                                     the brand's own motifs and effects
     molecules/NavItem/{NavItem.tsx,NavItem.stories.tsx}
     organisms/SiteHeader/{SiteHeader.tsx,SiteHeader.stories.tsx}
     templates/MarketingLayout/{...}
@@ -57,7 +57,7 @@ Story titles mirror the tree: `<Site>/Atoms/Button`, `<Site>/Organisms/SiteHeade
 
 **Import direction.** A component imports only from strictly lower tiers, and never from a sibling in its own tier. Constants, types and content that two siblings both need (nav items, tab definitions, copy) live in a `data/` or `lib/` module, not in one of the components. If a molecule needs a molecule, either the inner one is really an atom (it composes nothing), or the outer one is really an organism, or — often best — the outer one takes the inner one as a **slot** (a `renderX` prop or `children`) that the organism above fills in. Reclassify or slot; don't work around it. Record any genuine exception, with the reason, in the library's `docs/STORYBOOK.md` and pass it to the audit with `--allow`.
 
-**Split atoms into `ui/` and `brand/`.** A primitive you would find in shadcn (button, input, tabs, dialog, tooltip…) goes in `atoms/ui/` with the story title `<Site>/Atoms/Primitives/<Name>`; a motif only this brand has (custom borders, dot bands, text effects) goes in `atoms/brand/` with `<Site>/Atoms/Brand/<Name>`. Point the shadcn `ui` alias (`components.json`) at `atoms/ui`, and set `storySort` to `['Primitives', 'Brand']` under Atoms. This keeps the reusable primitives easy to find once the library grows and is what Phase 7's kit is built from.
+**Atoms hold primitives and brand motifs.** Atomic design has five tiers, and both kinds of piece are atoms, so they live in two folders under `atoms/`. A primitive you would find in shadcn (button, input, tabs, dialog, tooltip…) goes in `atoms/primitives/<family>/` with the story title `<Site>/Atoms/Primitives/<Family>/<Name>`; a motif only this brand has (custom borders, dot bands, text effects, icons) goes in `atoms/brand/` (`<Site>/Atoms/Brand/<Name>`). If the brand ships **more than one visual style** (Cloudflare's marketing site and its product/dashboard UI are different styles from different sources), keep one family folder per style (`atoms/primitives/marketing/`, `atoms/primitives/product/`), each with its own token file and shared class strings under `lib/<family>/`. Give a primitive that exists in both styles the same file name, exported parts and prop names so the two are swappable, join renamed ones in an alias table, and build a family's primitive only when that style has a source. Enforce the boundary with `scripts/audit-styles.py` (a family never uses the other's tokens and never imports it, stories included), generate a parity matrix from the folders (`scripts/primitives-matrix.py`), and explain the rules in `docs/PRIMITIVES.md`. Point the shadcn `ui` alias (`components.json`) at the family you will add to, and set `storySort` to `['Foundations', 'Atoms', ['Primitives', ['Marketing', 'Product'], 'Brand'], 'Molecules', …]`. Specs are named `Primitive-<Family>-<Name>.spec.md`. This keeps reusable primitives easy to find as the library grows and is what Phase 7's kit is built from.
 
 **Splitting rule.** A component that spans more than one tier must be split — an organism containing an unbuilt card is two units of work, not one. If a spec exceeds ~150 lines you have misclassified the tier; go down a level. This is mechanical. Do not override it with "but it's all related."
 

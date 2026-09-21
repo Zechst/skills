@@ -15,7 +15,7 @@ Checks, and exits 1 if any fails:
   4. SIDEBAR ORDER   .storybook/preview.* sets `storySort` so tiers sort smallest to largest.
 
 Tiers are recognised by a folder named atoms / molecules / organisms / templates / pages anywhere in the path, so both
-`src/atoms/Button.tsx` and `src/components/<site>/atoms/Button/Button.tsx` work. Use --allow for a documented exception,
+`src/atoms/brand/Button.tsx` and `src/components/<site>/atoms/Button/Button.tsx` work. Use --allow for a documented exception,
 e.g. --allow SiteHeader>MainNav (matches on file stems).
 """
 import glob

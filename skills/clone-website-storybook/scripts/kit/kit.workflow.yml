@@ -1,0 +1,20 @@
+name: kit
+# Rebuilds the framework-free kit (dist/) from the React source and fails if the committed output differs,
+# then checks the vanilla behaviour against the React components (the data-attribute contract).
+on:
+  pull_request:
+  push:
+    branches: [main]
+jobs:
+  kit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run build-storybook
+      - run: npx --yes http-server storybook-static -p 6006 -s &
+      - run: npx --yes wait-on http://localhost:6006/index.json
+      - run: npm run kit:check

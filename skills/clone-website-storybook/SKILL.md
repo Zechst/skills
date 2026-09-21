@@ -219,6 +219,10 @@ Phase 3 makes one story per extracted state so nothing is missed. That is scaffo
 
 Target for a finished library: a **Default** per component, plus only the states, one `Mobile` where it differs, and the `play` proofs. As a guide, around 1.5 stories per component; a component with more needs a reason.
 
+## Phase 7 — Distribute as a framework-free kit
+
+Do this after the prune, when the library is meant to be reused. Read `references/distribution.md`. In short: the React + Base UI + Tailwind components stay the **only hand-edited source**; tokens, compiled CSS and HTML snippets are **generated** from them, and one small vanilla script flips the same `data-*` attributes for the few interactive primitives. `dist/` is never edited by hand and CI fails if regenerating it changes anything. Every component is marked `static`, `static + vanilla JS` or `React only` in a generated support table. Extend the kit with the primitives a new product needs (forms, overlays, feedback, content), each labelled **extracted** or **derived**.
+
 ## Pre-build checklist
 
 Before writing code for any component, verify every box. If you cannot, go back and extract more.
@@ -267,6 +271,7 @@ Lessons from failed clones, each of which cost hours. The non-negotiables above 
 - Component count by tier, and reuse count (atoms shared across organisms)
 - Spec files written, which must equal the component count
 - Stories before and after the Phase 6 prune, and total states covered
+- If Phase 7 ran: what `dist/` contains, the support table, and which primitives are extracted versus derived
 - Assets downloaded by type
 - `build-storybook` result and `test-storybook` result (and, if the test browser was unavailable, that the `play` tests did not run)
 - **Layout diff:** per-section `[top, height]` deltas versus the original and the total page-height delta

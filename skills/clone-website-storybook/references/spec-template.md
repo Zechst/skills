@@ -11,7 +11,7 @@ Fill every heading. Write "N/A" only after checking — a footer still has link 
 - **Tier:** atom | molecule | organism | template | page
 - **Implementation:** `src/components/<site-key>/<tier>/<Name>/<Name>.tsx`
 - **Stories:** `src/components/<site-key>/<tier>/<Name>/<Name>.stories.tsx`
-- **Story title:** `<Site>/<Tier>/<Name>`
+- **Story title:** `<Tier>/<Name>`
 - **Composes:** <existing lower-tier atoms/molecules reused, or "none"; if this is a new atom/molecule, one line on why no existing one fits>
 - **Reused by:** <which organisms/pages consume it — fill in as you discover them>
 - **Reference screenshot:** `docs/design-references/<site-key>/<page-key>/<name>.png`

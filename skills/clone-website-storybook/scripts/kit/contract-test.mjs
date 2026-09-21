@@ -21,8 +21,8 @@ const state = (page) => page.evaluate(() => {
   return [...document.querySelectorAll('[role=tab],[role=tabpanel]')].map(pick)
 })
 const cases = [
-  { name: 'Tabs: PlatformPricing → SASE tab', id: 'cloudflare-organisms-platformpricing--default', file: 'html/Organisms/PlatformPricing/Default.html', act: (p) => p.locator('[role=tab]').nth(1).click() },
-  { name: 'Tabs: PlatformPricing → key End', id: 'cloudflare-organisms-platformpricing--default', file: 'html/Organisms/PlatformPricing/Default.html', act: async (p) => { await p.locator('[role=tab]').first().focus(); await p.keyboard.press('End') } },
+  { name: 'Tabs: PlatformPricing → SASE tab', id: 'organisms-platformpricing--default', file: 'html/Organisms/PlatformPricing/Default.html', act: (p) => p.locator('[role=tab]').nth(1).click() },
+  { name: 'Tabs: PlatformPricing → key End', id: 'organisms-platformpricing--default', file: 'html/Organisms/PlatformPricing/Default.html', act: async (p) => { await p.locator('[role=tab]').first().focus(); await p.keyboard.press('End') } },
 ]
 const browser = await chromium.launch(); let bad = 0
 for (const c of cases) {

@@ -10,8 +10,8 @@ Checks, and exits 1 if any fails:
   2. STORY COVERAGE  every component file under a tier folder has a colocated story
                      (`<Name>.stories.tsx`, any `*.stories.*` beside it when each component has its own folder,
                      or a shared story in the same folder that imports it).
-  3. STORY TITLES    every story's title has the tier as its second segment and matches the folder
-                     (`<Site>/Atoms/Button` for a file under atoms/).
+  3. STORY TITLES    every story's title starts with the tier and matches the folder (`Atoms/Button` for a file
+                     under atoms/). There is no site prefix: one Storybook per site.
   4. SIDEBAR ORDER   .storybook/preview.* sets `storySort` so tiers sort smallest to largest.
 
 Tiers are recognised by a folder named atoms / molecules / organisms / templates / pages anywhere in the path, so both
@@ -109,9 +109,9 @@ def main(argv):
             problems.append(f'NO TITLE   {s}')
             continue
         segs = m.group(1).split('/')
-        if t and (len(segs) < 3 or segs[1].lower() != t):
-            problems.append(f'TITLE      {s}: "{m.group(1)}" should be <Site>/{t.capitalize()}/<Name>')
-        if not t and len(segs) > 1 and segs[1].lower() in ('ui', 'components', 'primitives'):
+        if t and (len(segs) < 2 or segs[0].lower() != t):
+            problems.append(f'TITLE      {s}: "{m.group(1)}" should be {t.capitalize()}/<Name>')
+        if not t and segs[0].lower() in ('ui', 'components', 'primitives'):
             problems.append(f'TITLE      {s}: "{m.group(1)}" uses a non-tier section; primitives are atoms')
 
     # 4. sidebar order

@@ -42,13 +42,13 @@ export default config;
 
 The generator writes `preview.tsx`, not `preview.ts` — edit the file that exists rather than creating a second one beside it.
 
-**Fix the sidebar order.** Storybook sorts alphabetically, which puts `Pages` before `Templates` and can wedge `Foundations` between `Atoms` and `Molecules`. Set an explicit order, smallest to largest, under the site's root section:
+**Fix the sidebar order.** Storybook sorts alphabetically, which puts `Pages` before `Templates` and can wedge `Foundations` between `Atoms` and `Molecules`. Set an explicit order, smallest to largest. There is no site root section: one repo and one Storybook per site, so titles start at the tier.
 
 ```tsx
 parameters: {
   options: {
     storySort: {
-      order: ['<Site>', ['Foundations', 'Atoms', 'Molecules', 'Organisms', 'Templates', 'Pages']],
+      order: ['Foundations', 'Atoms', 'Molecules', 'Organisms', 'Templates', 'Pages'],
     },
   },
 },

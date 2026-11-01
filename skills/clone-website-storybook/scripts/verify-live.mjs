@@ -58,8 +58,9 @@ async function open(ctx, url) {
   await page.waitForTimeout(6000); // intro animations and delayed pop-ups
   for (const sel of ['[role=dialog] [aria-label*="lose" i]', 'dialog [aria-label*="lose" i]', 'button:has-text("Close")', '[aria-label="Dismiss"]']) {
     const el = page.locator(sel).first();
+    // Short timeout: some sites keep hidden dialogs mounted, and a covered close button would stall 30s.
     if (await el.isVisible().catch(() => false)) {
-      await el.click().catch(() => {});
+      await el.click({timeout: 2000}).catch(() => {});
       break;
     }
   }

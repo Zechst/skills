@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // Acceptance gate: live page vs clone story, same browser, same viewport, same absolute scroll y.
-// Fails (exit 1) on height mismatch at load, mismatched frames, or empty screens the original doesn't have.
+// Compares EVERY screen of the page (one viewport-height step at a time), not samples.
+// Fails (exit 1) on height mismatch at load, any screen under 99% pixel match, or empty screens the original doesn't have.
 //
 // Usage (run from the clone project root, which must have `playwright` installed):
 //   node <skill-dir>/scripts/verify-live.mjs \
@@ -11,7 +12,7 @@
 //   --partial          clone covers only part of the page: skip the total-height check, but still sweep for empty screens
 //   --offset-live N    add N px to every live y (partial clones whose story starts at the cloned section);
 //                      per viewport: --offset-live desktop:5914,mobile:4561
-//   --max-diff P       max % of differing pixels per frame (default 8)
+//   --max-diff P       max % of differing pixels per screen (default 1, i.e. >= 99% match). Don't raise it to pass.
 //   --allow-y Y,Y      frames allowed to exceed --max-diff (timers/video); each must be justified in the report
 //   --block REGEX      extra request URLs to block (trackers are always blocked)
 import {createRequire} from 'node:module';
@@ -29,7 +30,7 @@ if (!args.live || !args.clone) {
   process.exit(2);
 }
 const OUT = resolve(args.out ?? 'verify');
-const MAX_DIFF = Number(args['max-diff'] ?? 8);
+const MAX_DIFF = Number(args['max-diff'] ?? 1);
 const ALLOW_Y = new Set(String(args['allow-y'] ?? '').split(',').filter(Boolean).map(Number));
 const OFFSETS = String(args['offset-live'] ?? '0').includes(':')
   ? Object.fromEntries(String(args['offset-live']).split(',').map((kv) => kv.split(':')).map(([k, v]) => [k, Number(v)]))
@@ -111,6 +112,7 @@ async function stats(scratch, a, b) {
         const c = new OffscreenCanvas(i.width / 4, i.height / 4);
         const x = c.getContext('2d');
         x.drawImage(i, 0, 0, c.width, c.height);
+        globalThis.__w = c.width; // analysis width, for locating differing pixels
         return x.getImageData(0, 0, c.width, c.height).data;
       };
       const flat = (d) => {
@@ -125,10 +127,16 @@ async function stats(scratch, a, b) {
       if (!b) return {flat: flat(da)};
       const db = await load(b);
       let diff = 0;
+      let x0 = Infinity, y0 = Infinity, x1 = -1, y1 = -1;
       for (let i = 0; i < da.length; i += 4) {
-        if (Math.abs(da[i] - db[i]) + Math.abs(da[i + 1] - db[i + 1]) + Math.abs(da[i + 2] - db[i + 2]) > 48) diff++;
+        if (Math.abs(da[i] - db[i]) + Math.abs(da[i + 1] - db[i + 1]) + Math.abs(da[i + 2] - db[i + 2]) > 48) {
+          diff++;
+          const p = i / 4, x = p % globalThis.__w, y = Math.floor(p / globalThis.__w);
+          if (x < x0) x0 = x; if (y < y0) y0 = y; if (x > x1) x1 = x; if (y > y1) y1 = y;
+        }
       }
-      return {diffPct: +((100 * diff) / (da.length / 4)).toFixed(2), flatLive: flat(da), flatClone: flat(db)};
+      const box = x1 < 0 ? null : {x: x0 * 4, y: y0 * 4, w: (x1 - x0 + 1) * 4, h: (y1 - y0 + 1) * 4};
+      return {diffPct: +((100 * diff) / (da.length / 4)).toFixed(2), box, flatLive: flat(da), flatClone: flat(db)};
     },
     [a, b],
   );
@@ -144,7 +152,8 @@ for (const vp of VIEWPORTS) {
   const v = {viewport: vp.tag, liveHeightAtLoad: hl, cloneHeightAtLoad: hc, frames: [], sweep: []};
   if (!PARTIAL && Math.abs(hl - hc) > 1) failures.push(`${vp.tag}: page height at load live ${hl} vs clone ${hc}`);
 
-  // 1. Sweep the whole clone, one viewport at a time: no near-empty screens the original doesn't have.
+  // Every screen, top to bottom: pixel match against the original, and no empty screens.
+  const pairs = [];
   for (let y = 0; y < hc; y += vp.height) {
     const c = await shotAt(clone, y);
     const l = y + OFFSET < hl ? await shotAt(live, y + OFFSET) : null;
@@ -153,23 +162,23 @@ for (const vp of VIEWPORTS) {
     if (s.flatClone >= 95 && (s.flatLive === null || s.flatLive < 90)) {
       failures.push(`${vp.tag}: clone screen at y=${y} is ${s.flatClone}% one flat colour (live ${s.flatLive ?? 'n/a'}%) — empty spacer or unloaded media`);
     }
+    if (!l) continue;
+    v.frames.push({y, liveY: y + OFFSET, diffPct: s.diffPct, matchPct: +(100 - s.diffPct).toFixed(2), box: s.box});
+    if (s.diffPct > MAX_DIFF && !ALLOW_Y.has(y)) {
+      const at = s.box ? ` in box x${s.box.x} y${s.box.y} ${s.box.w}x${s.box.h}` : '';
+      failures.push(`${vp.tag}: screen y=${y} matches ${(100 - s.diffPct).toFixed(2)}% (< ${100 - MAX_DIFF}%)${at}`);
+    }
+    pairs.push({y, a: l, b: c, d: s.diffPct, box: s.box});
   }
+  const diffs = v.frames.map((f) => f.diffPct);
+  v.matchPct = diffs.length ? +(100 - diffs.reduce((x, y) => x + y, 0) / diffs.length).toFixed(2) : null;
+  v.worstMatchPct = diffs.length ? +(100 - Math.max(...diffs)).toFixed(2) : null;
 
-  // 2. Paired frames at the same y across the page, side-by-side sheet for review.
-  const pairs = [];
-  for (const f of [0, 0.15, 0.3, 0.45, 0.6, 0.75, 0.9, 1]) {
-    const y = Math.round(f * Math.max(0, Math.min(hc, hl - OFFSET) - vp.height));
-    const [a, b] = [await shotAt(live, y + OFFSET), await shotAt(clone, y)];
-    const s = await stats(scratch, a, b);
-    v.frames.push({y, liveY: y + OFFSET, diffPct: s.diffPct});
-    if (s.diffPct > MAX_DIFF && !ALLOW_Y.has(y)) failures.push(`${vp.tag}: frame y=${y} differs ${s.diffPct}% (> ${MAX_DIFF}%)`);
-    pairs.push({y, a, b, d: s.diffPct});
-  }
   const w = vp.mobile ? 390 : 700;
   await scratch.setViewportSize({width: w * 2 + 30, height: 800});
   await scratch.setContent(
     `<body style="margin:0;background:#222;font:14px sans-serif;color:#eee"><div style="display:flex;gap:10px;padding:5px 10px"><b style="width:${w}px">LIVE</b><b>CLONE</b></div>` +
-      pairs.map((p) => `<div style="padding:4px 10px">y=${p.y} · diff ${p.d}%</div><div style="display:flex;gap:10px;padding:0 10px 10px"><img style="width:${w}px" src="data:image/png;base64,${p.a}"><img style="width:${w}px" src="data:image/png;base64,${p.b}"></div>`).join(''),
+      pairs.map((p) => `<div style="padding:4px 10px">y=${p.y} · match ${(100 - p.d).toFixed(2)}%</div><div style="display:flex;gap:10px;padding:0 10px 10px"><img style="width:${w}px" src="data:image/png;base64,${p.a}"><div style="position:relative;width:${w}px"><img style="width:${w}px;display:block" src="data:image/png;base64,${p.b}">${p.d > MAX_DIFF && p.box ? `<div style="position:absolute;left:${(p.box.x / vp.width) * 100}%;top:${(p.box.y / vp.height) * 100}%;width:${(p.box.w / vp.width) * 100}%;height:${(p.box.h / vp.height) * 100}%;outline:2px solid #ff2d55"></div>` : ''}</div></div>`).join(''),
   );
   await scratch.waitForTimeout(500);
   await scratch.screenshot({path: join(OUT, `sheet-${vp.tag}.png`), fullPage: true});
@@ -181,6 +190,6 @@ await browser.close();
 report.failures = failures;
 report.pass = failures.length === 0;
 writeFileSync(join(OUT, 'verify-report.json'), JSON.stringify(report, null, 2));
-console.log(JSON.stringify({pass: report.pass, failures, heights: report.viewports.map((v) => [v.viewport, v.liveHeightAtLoad, v.cloneHeightAtLoad])}, null, 2));
+console.log(JSON.stringify({pass: report.pass, failures, heights: report.viewports.map((v) => [v.viewport, v.liveHeightAtLoad, v.cloneHeightAtLoad]), match: report.viewports.map((v) => [v.viewport, `avg ${v.matchPct}%`, `worst ${v.worstMatchPct}%`])}, null, 2));
 console.log(`sheets + report: ${OUT}`);
 process.exit(report.pass ? 0 : 1);

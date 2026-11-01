@@ -204,6 +204,21 @@ Do not declare the clone complete at the end of Phase 4.
 6. Run `scripts/audit-tiers.py` one last time and open the Storybook sidebar: it should read Foundations, Atoms, Molecules, Organisms, Templates, Pages, in that order, with no other sections.
 7. Run `npm run test-storybook` if the project has it configured. If the test browser is not installed, say so in the report instead of skipping silently.
 
+8. **Run the acceptance gate — automatically, every time, without being asked.** The clone is not done, and must not be reported as done, until this exits 0:
+   ```bash
+   node <skill-dir>/scripts/verify-live.mjs --live <url> --clone '<page story iframe url>' --out docs/design-references/<site-key>/verify
+   ```
+   It opens the original and the clone in the same browser at 1440×900 and 390×844 (touch on), blocks trackers, dismisses pop-ups, and measures height **at load**. Before every screenshot it scrolls to the same absolute y and sends one real wheel tick. It then freezes autoplaying videos and endless CSS animations at their first frame on both pages, so frames compare layout and not playback position. Scroll-scrubbed video is left untouched. It fails on:
+   - a page-height difference greater than 1px;
+   - any paired frame with more than 8% differing pixels;
+   - **any clone screen that is ≥95% one flat colour where the original isn't**, such as empty spacers, dead tails or media that never loaded.
+
+   On failure: find the root cause, fix it, and run the gate again. Never loosen the thresholds to pass. `--allow-y` is only for frames driven by timers or video, and each one is justified in the report.
+
+   **Partial clones** (a few chapters of a page) use `--partial --offset-live desktop:<N>,mobile:<N>`, where N is how far the live page's first cloned section sits below the story's (it differs per viewport). The page story starts at the cloned section with at most one screen of lead-in and ends after the last one. **Never pad the story with blank spacers to line up absolute scroll positions.** Offset the verification instead.
+
+   Then look at `sheet-desktop.png` and `sheet-mobile.png` yourself before reporting.
+
 **Refactoring later?** Any swap of implementation (hand CSS → utility classes, hand-rolled widgets → a headless primitive, adding a reset) needs a *snapshot → change → diff* pass with every difference classified as invisible, intended, or a bug (`layout-diff.md` §2). Capture every state, and confirm each baseline is real before trusting it.
 
 ## Phase 6 — Prune the stories
@@ -256,6 +271,9 @@ Lessons from failed clones, each of which cost hours. The non-negotiables above 
 - **Don't let an organism absorb its children.** Handing one agent "build the features section" produces approximated spacing and guessed font sizes. Handing it a single molecule with exact values produces an exact match.
 - **Don't put page-specific styling in a global stylesheet.** Scope it to the site's token namespace or the template, or it will bleed into every other site's stories.
 - **Don't write your own global resets alongside a framework reset.** A `h1,p { margin: 0 }` rule out-ranked every utility margin on paragraphs and silently deleted spacing for the whole page. Rely on the one reset, and check specificity before adding another.
+- **Don't measure page height after a full scroll pass.** Lazy images load during the pass, so the clone and the original both look taller and a 36–40px gap hides. Measure at load, as the gate does.
+- **Don't pad a partial clone with spacers.** A 6,000px blank lead-in made one clone's absolute positions match while showing the user seven empty screens.
+- **Don't compare after a programmatic `scrollTo` alone.** Some sites only move layers on real wheel or touch input, so a scripted jump shows a stale frame. Send one real wheel tick.
 - **Don't trust a baseline you did not verify.** A snapshot taken right after a programmatic click can record the unchanged state. Compare state B to state A before using it.
 - **Don't hide state with `[hidden]` in a stacked layout.** A reset that forces `[hidden] { display: none !important }` breaks tab groups whose panels must share one grid cell so the tallest sets the height; hide with `visibility`/`opacity` and switch the attribute off.
 
@@ -269,6 +287,7 @@ Lessons from failed clones, each of which cost hours. The non-negotiables above 
 - Assets downloaded by type
 - `build-storybook` result and `test-storybook` result (and, if the test browser was unavailable, that the `play` tests did not run)
 - **Layout diff:** per-section `[top, height]` deltas versus the original and the total page-height delta
+- **Acceptance gate:** the `verify-live.mjs` result (pass/fail), heights at load per viewport, the maximum frame diff %, the empty-screen sweep result, any `--allow-y` frames with their reasons, and the path to the two sheets
 - Detected source stack and which values came from source versus the DOM
 - Existing namespaces preserved, and any replacement the user approved
 - **Assumptions** (values not extracted, with reasons) and **known gaps** (unbuilt states, unextracted breakpoints, and any motion the user approved dropping) and remaining visual discrepancies

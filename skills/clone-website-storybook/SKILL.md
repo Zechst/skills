@@ -274,6 +274,7 @@ Lessons from failed clones, each of which cost hours. The non-negotiables above 
 - **Don't measure page height after a full scroll pass.** Lazy images load during the pass, so the clone and the original both look taller and a 36–40px gap hides. Measure at load, as the gate does.
 - **Don't pad a partial clone with spacers.** A 6,000px blank lead-in made one clone's absolute positions match while showing the user seven empty screens.
 - **Don't compare after a programmatic `scrollTo` alone.** Some sites only move layers on real wheel or touch input, so a scripted jump shows a stale frame. Send one real wheel tick.
+- **Don't put clicks in the page story's `play`.** Storybook runs `play` on every iframe load, so the acceptance gate runs it too. A Default page story that clicked "Book" left a detail panel open over every compared frame, and the gate failed at 26–65%. Keep the Default page story's `play` read-only and move interactions to their own stories.
 - **Don't trust a baseline you did not verify.** A snapshot taken right after a programmatic click can record the unchanged state. Compare state B to state A before using it.
 - **Don't hide state with `[hidden]` in a stacked layout.** A reset that forces `[hidden] { display: none !important }` breaks tab groups whose panels must share one grid cell so the tallest sets the height; hide with `visibility`/`opacity` and switch the attribute off.
 
